@@ -13,20 +13,21 @@
 PREFIX := /usr/local
 BIN_DIR := $(PREFIX)/bin
 
-backend/server: $(shell find backend -name '*.go')
-	go build -o $@ ./backend/
+build/server: $(shell find . -name '*.go')
+	mkdir -p build
+	go build -o $@
 
-all: backend/server
+all: build/server
 
 install: all
-	install -D --mode=755 backend/server $(BIN_DIR)
+	install -D --mode=755 build/server $(BIN_DIR)
 
 .PHONY: stop watch all
 
 # Development niceties
 # --------------------
 
-pidfile: backend/server
+pidfile: build/server
 	$(MAKE) stop
 	$< & echo $$! > pidfile
 
