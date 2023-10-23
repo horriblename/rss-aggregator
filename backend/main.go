@@ -54,17 +54,24 @@ func v1Router() chi.Router {
 }
 
 func getReadiness(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
+	type readinessReply struct {
+		Status string `json:"status"`
+	}
+	respondWithJSON(w, http.StatusOK, readinessReply{"ok"})
 }
 
 func getErr(w http.ResponseWriter, r *http.Request) {
 	respondWithError(w, http.StatusInternalServerError, "Internal Server Error")
 }
 
+// errors are logged not returned
 func respondWithJSON(w http.ResponseWriter, status int, payload interface{}) {
 	w.WriteHeader(status)
 	encoder := json.NewEncoder(w)
-	encoder.Encode(payload)
+	err := encoder.Encode(payload)
+	if err != nil {
+		log.Printf("encoding JSON: %s", err)
+	}
 }
 
 func respondWithError(w http.ResponseWriter, status int, msg string) {
