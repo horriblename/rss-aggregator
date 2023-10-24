@@ -12,6 +12,7 @@
 
 PREFIX := /usr/local
 BIN_DIR := $(PREFIX)/bin
+BIN_NAME := $(BIN_DIR)/rss-aggre
 
 build/server: $(shell find . -name '*.go')
 	mkdir -p build
@@ -20,7 +21,7 @@ build/server: $(shell find . -name '*.go')
 all: build/server
 
 install: all
-	install -D --mode=755 build/server $(BIN_DIR)
+	install -D --mode=755 --no-target-directory build/server $(BIN_NAME)
 
 .PHONY: stop watch all
 
