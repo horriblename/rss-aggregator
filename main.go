@@ -30,23 +30,6 @@ type apiConfig struct {
 	ctx context.Context
 }
 
-type UserJSON struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Name      string    `json:"name"`
-	Apikey    string    `json:"api_key"`
-}
-
-type FeedJSON struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Name      string    `json:"name"`
-	Url       string    `json:"url"`
-	UserID    uuid.UUID `json:"user_id"`
-}
-
 type authedHandler func(http.ResponseWriter, *http.Request, database.User)
 
 func main() {
@@ -160,7 +143,7 @@ func (cfg *apiConfig) getUsers(w http.ResponseWriter, r *http.Request, user data
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, UserAsJSON(&user))
+	respondWithJSON(w, http.StatusOK, &user)
 }
 
 func (cfg *apiConfig) postUsers(w http.ResponseWriter, r *http.Request) {
@@ -191,7 +174,7 @@ func (cfg *apiConfig) postUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, UserAsJSON(&user))
+	respondWithJSON(w, http.StatusOK, &user)
 }
 
 func (cfg *apiConfig) postFeeds(w http.ResponseWriter, r *http.Request, user database.User) {
@@ -224,11 +207,10 @@ func (cfg *apiConfig) postFeeds(w http.ResponseWriter, r *http.Request, user dat
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, FeedAsJSON(&feed))
+	respondWithJSON(w, http.StatusOK, &feed)
 }
 
 func (cfg *apiConfig) getFeeds(w http.ResponseWriter, r *http.Request) {
-	var feeds slice[database.Feed, FeedJSON]
 	feeds, err := cfg.DB.GetFeeds(cfg.ctx)
 	if err != nil {
 		log.Printf("db get feeds: %s", err)
@@ -236,27 +218,13 @@ func (cfg *apiConfig) getFeeds(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	feedsJson := feeds.Map(func(feed database.Feed) FeedJSON { return FeedAsJSON(&feed) })
-	respondWithJSON(w, http.StatusOK, feedsJson)
+	respondWithJSON(w, http.StatusOK, feeds)
 }
 
-func UserAsJSON(user *database.User) UserJSON {
-	return UserJSON{user.ID, user.CreatedAt, user.UpdatedAt, user.Name, user.Apikey}
+
 }
 
-func FeedAsJSON(feed *database.Feed) FeedJSON {
-	return FeedJSON{feed.ID, feed.CreatedAt, feed.UpdatedAt, feed.Name, feed.Url, feed.UserID}
-}
 
-type slice[E, V any] []E
-
-func (s slice[E, V]) Map(iteratee func(E) V) []V {
-	result := make([]V, len(s))
-	for i, item := range s {
-		result[i] = iteratee(item)
-	}
-
-	return result
 }
 
 // errors are logged not returned
