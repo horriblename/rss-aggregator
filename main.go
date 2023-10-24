@@ -38,6 +38,17 @@ type UserJSON struct {
 	Apikey    string    `json:"api_key"`
 }
 
+type FeedJSON struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Name      string    `json:"name"`
+	Url       string    `json:"url"`
+	UserID    uuid.UUID `json:"user_id"`
+}
+
+type authedHandler func(http.ResponseWriter, *http.Request, database.User)
+
 func main() {
 	var err error
 	godotenv.Load()
@@ -86,8 +97,9 @@ func v1Router(apiCfg apiConfig) chi.Router {
 	r := chi.NewRouter()
 	r.Get("/readiness", getReadiness)
 	r.Get("/err", getErr)
-	r.Get("/users", apiCfg.getUsers)
+	r.Get("/users", apiCfg.middlewareAuth(apiCfg.getUsers))
 	r.Post("/users", apiCfg.postUsers)
+	r.Post("/feeds", apiCfg.middlewareAuth(apiCfg.postFeeds))
 	return r
 }
 
@@ -102,7 +114,31 @@ func getErr(w http.ResponseWriter, r *http.Request) {
 	respondWithError(w, http.StatusInternalServerError, "Internal Server Error")
 }
 
-func (cfg apiConfig) getUsers(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) middlewareAuth(handler authedHandler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		auth := r.Header.Get("Authorization")
+		api_key, found := strings.CutPrefix(auth, "ApiKey ")
+		if !found {
+			log.Print("attempt to get user with bad Authorization")
+			respondWithError(w, http.StatusBadRequest, "Missing or Bad Authorization in header")
+			return
+		}
+
+		user, err := cfg.DB.GetUser(cfg.ctx, api_key)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				respondWithError(w, http.StatusBadRequest, "User Not Found")
+				return
+			}
+			log.Printf("middlewareAuth db error: %s", err)
+			respondWithError(w, http.StatusInternalServerError, "Internal Server Error")
+			return
+		}
+		handler(w, r, user)
+	}
+}
+
+func (cfg *apiConfig) getUsers(w http.ResponseWriter, r *http.Request, user database.User) {
 	auth := r.Header.Get("Authorization")
 	api_key, found := strings.CutPrefix(auth, "ApiKey ")
 	if !found {
@@ -126,7 +162,7 @@ func (cfg apiConfig) getUsers(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, UserAsJSON(&user))
 }
 
-func (cfg apiConfig) postUsers(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) postUsers(w http.ResponseWriter, r *http.Request) {
 	type postUsersRequest struct {
 		Name string `json:"name"`
 	}
@@ -157,8 +193,45 @@ func (cfg apiConfig) postUsers(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, UserAsJSON(&user))
 }
 
+func (cfg *apiConfig) postFeeds(w http.ResponseWriter, r *http.Request, user database.User) {
+	type postFeedsRequest struct {
+		Name string `json:"name"`
+		Url  string `json:"url"`
+	}
+
+	var req postFeedsRequest
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&req)
+	if err != nil {
+		// log.Printf("error decoding json")
+		respondWithError(w, http.StatusBadRequest, "Error decoding JSON")
+		return
+	}
+
+	feed, err := cfg.DB.CreateFeed(cfg.ctx, database.CreateFeedParams{
+		ID:        uuid.New(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Name:      req.Name,
+		Url:       req.Url,
+		UserID:    user.ID,
+	})
+
+	if err != nil {
+		log.Printf("db creating feed: %s", err)
+		respondWithError(w, http.StatusInternalServerError, "DB error")
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, FeedAsJSON(&feed))
+}
+
 func UserAsJSON(user *database.User) UserJSON {
 	return UserJSON{user.ID, user.CreatedAt, user.UpdatedAt, user.Name, user.Apikey}
+}
+
+func FeedAsJSON(feed *database.Feed) FeedJSON {
+	return FeedJSON{feed.ID, feed.CreatedAt, feed.UpdatedAt, feed.Name, feed.Url, feed.UserID}
 }
 
 // errors are logged not returned
