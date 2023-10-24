@@ -27,8 +27,9 @@ type serverConfig struct {
 }
 
 type apiConfig struct {
-	DB  *database.Queries
-	ctx context.Context
+	queries *database.Queries
+	db      *sql.DB
+	ctx     context.Context
 }
 
 type authedHandler func(http.ResponseWriter, *http.Request, database.User)
@@ -53,7 +54,7 @@ func main() {
 	if err != nil {
 		log.Printf("opening db: %s", err)
 	}
-	apiCfg := apiConfig{database.New(db), context.Background()}
+	apiCfg := apiConfig{database.New(db), db, context.Background()}
 
 	err = startServer(cfg, apiCfg)
 	if err != nil {
@@ -133,7 +134,7 @@ func (cfg *apiConfig) middlewareAuth(handler authedHandler) http.HandlerFunc {
 			return
 		}
 
-		user, err := cfg.DB.GetUser(cfg.ctx, api_key)
+		user, err := cfg.queries.GetUser(cfg.ctx, api_key)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				respondWithError(w, http.StatusBadRequest, "User Not Found")
@@ -156,7 +157,7 @@ func (cfg *apiConfig) getUsers(w http.ResponseWriter, r *http.Request, user data
 		return
 	}
 
-	user, err := cfg.DB.GetUser(cfg.ctx, api_key)
+	user, err := cfg.queries.GetUser(cfg.ctx, api_key)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			log.Printf("user not found %s", api_key)
@@ -186,7 +187,7 @@ func (cfg *apiConfig) postUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := cfg.DB.CreateUser(cfg.ctx, database.CreateUserParams{
+	user, err := cfg.queries.CreateUser(cfg.ctx, database.CreateUserParams{
 		ID:        uuid.New(),
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
@@ -217,7 +218,16 @@ func (cfg *apiConfig) postFeeds(w http.ResponseWriter, r *http.Request, user dat
 		return
 	}
 
-	feed, err := cfg.DB.CreateFeed(cfg.ctx, database.CreateFeedParams{
+	tx, err := cfg.db.Begin()
+	if err != nil {
+		log.Printf("db begin transaction: %s", err)
+		respondWithError(w, http.StatusInternalServerError, "DB Error")
+		return
+	}
+	defer tx.Rollback()
+	qtx := cfg.queries.WithTx(tx)
+
+	feed, err := qtx.CreateFeed(cfg.ctx, database.CreateFeedParams{
 		ID:        uuid.New(),
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
@@ -232,11 +242,30 @@ func (cfg *apiConfig) postFeeds(w http.ResponseWriter, r *http.Request, user dat
 		return
 	}
 
+	if _, err := qtx.CreateFeedFollow(cfg.ctx, database.CreateFeedFollowParams{
+		ID:        uuid.New(),
+		FeedID:    feed.ID,
+		UserID:    user.ID,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}); err != nil {
+		log.Printf("db creating feed_follow: %s", err)
+		respondWithError(w, http.StatusInternalServerError, "DB error")
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Printf("db commiting transaction: %s", err)
+		respondWithError(w, http.StatusInternalServerError, "DB Error")
+		return
+	}
+
 	respondWithJSON(w, http.StatusOK, &feed)
 }
 
 func (cfg *apiConfig) getFeeds(w http.ResponseWriter, r *http.Request) {
-	feeds, err := cfg.DB.GetFeeds(cfg.ctx)
+	feeds, err := cfg.queries.GetFeeds(cfg.ctx)
 	if err != nil {
 		log.Printf("db get feeds: %s", err)
 		respondWithError(w, http.StatusInternalServerError, "DB error")
@@ -258,7 +287,7 @@ func (cfg *apiConfig) postFeedFollow(w http.ResponseWriter, r *http.Request, use
 		return
 	}
 
-	ff, err := cfg.DB.CreateFeedFollow(cfg.ctx, database.CreateFeedFollowParams{
+	ff, err := cfg.queries.CreateFeedFollow(cfg.ctx, database.CreateFeedFollowParams{
 		ID:        uuid.New(),
 		FeedID:    args.FeedID,
 		UserID:    user.ID,
@@ -279,7 +308,7 @@ func (cfg *apiConfig) deleteFeedFollow(w http.ResponseWriter, r *http.Request) {
 	ff_id := r.Context().Value("feed_follow_id")
 	if ff_id, ok := ff_id.(uuid.UUID); ok {
 
-		_, err := cfg.DB.DeleteFeedFollow(cfg.ctx, ff_id)
+		_, err := cfg.queries.DeleteFeedFollow(cfg.ctx, ff_id)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				respondWithError(w, http.StatusNotFound, "Feed Follow not found")
@@ -298,7 +327,7 @@ func (cfg *apiConfig) deleteFeedFollow(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *apiConfig) getFeedFollows(w http.ResponseWriter, r *http.Request, user database.User) {
-	ffs, err := cfg.DB.GetFeedFollowsOfUser(cfg.ctx, user.ID)
+	ffs, err := cfg.queries.GetFeedFollowsOfUser(cfg.ctx, user.ID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			respondWithError(w, http.StatusNotFound, "Feed follow not found")
