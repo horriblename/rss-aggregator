@@ -7,6 +7,12 @@
 (lambda endpoint [s]
   (f "http://%s/%s" base-url s))
 
+(lambda any [list predicate]
+  (var found false)
+  (each [_ v (ipairs list) &until found]
+    (set found (predicate v)))
+  found)
+
 (lambda header [name value ?never_index]
   {: name : value :never_index (or ?never_index false)})
 
@@ -33,20 +39,25 @@
       {:headers [authed_header]
       :asserts [status-ok]})
 
+(var feed_id nil)
 (test "POST feeds: create feed"
       :POST
       (endpoint :v1/feeds)
       {:headers [authed_header]
-      :body {:name "First Feed by John"
-      :url "example.com"}
-      :asserts [status-ok #(= $1.body.url "example.com")]})
+      :body {:name "First Feed by John" :url "example.com"}
+      :asserts [status-ok #(= $.body.url "example.com")]
+      :scripts [#(set feed_id (assert $.body.id))]})
 
-(var feed_id nil)
 (test "GET feeds: get feeds"
       :GET
       (endpoint :v1/feeds)
-      {:asserts []
-      :scripts [status-ok #(set feed_id (assert (. $1 :body 1 :id)))]})
+      {:asserts [status-ok]})
+
+(local x (test "Feed is auto-followed upon creation"
+      :GET (endpoint :v1/feed_follows)
+      {:headers [authed_header]
+      :asserts [status-ok
+                #(any $.body #(= $.feed_id feed_id))]}))
 
 (var feed_follow_id nil)
 (test "POST feed_follows: create feed follow"
