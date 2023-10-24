@@ -29,6 +29,14 @@ type apiConfig struct {
 	ctx context.Context
 }
 
+type UserJSON struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Name      string    `json:"name"`
+	Apikey    string    `json:"api_key"`
+}
+
 func main() {
 	var err error
 	godotenv.Load()
@@ -120,7 +128,11 @@ func (cfg apiConfig) postUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, user)
+	respondWithJSON(w, http.StatusOK, UserAsJSON(&user))
+}
+
+func UserAsJSON(user *database.User) UserJSON {
+	return UserJSON{user.ID, user.CreatedAt, user.UpdatedAt, user.Name, user.Apikey}
 }
 
 // errors are logged not returned
