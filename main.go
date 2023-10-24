@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi"
+	"github.com/go-chi/cors"
 	"github.com/google/uuid"
 	"github.com/horriblename/rss-aggre/internal/database"
 
@@ -63,7 +64,14 @@ func main() {
 
 func startServer(serverCfg serverConfig, apiCfg apiConfig) error {
 	router := chi.NewRouter()
-	// router.Use(cors.Handler())
+	router.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"https://*", "http://*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"*"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: false,
+		MaxAge:           300,
+	}))
 
 	router.Mount("/v1", v1Router(apiCfg))
 
