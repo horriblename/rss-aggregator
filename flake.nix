@@ -28,7 +28,7 @@
       pkgs = pkgsFor.${system};
     in {
       default = pkgs.mkShell {
-        nativeBuildInputs = with pkgs; [go postgresql_15];
+        nativeBuildInputs = with pkgs; [go postgresql_15 sqlc goose];
       };
     });
   };
