@@ -1,0 +1,25 @@
+services:
+  # rss-aggre:
+  #   build: ..
+
+  db:
+    image: "postgres:15.4-alpine3.18"
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+      POSTGRES_USER: rss-aggre
+    volumes:
+      - db_data:/postgres
+    secrets:
+      - db_password
+
+secrets:
+  db_password:
+    file: ./db_password.txt
+
+volumes:
+  db_data:
+    external:
+      name: ${DATABASE_VOLUME}
