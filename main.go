@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -85,6 +86,7 @@ func v1Router(apiCfg apiConfig) chi.Router {
 	r := chi.NewRouter()
 	r.Get("/readiness", getReadiness)
 	r.Get("/err", getErr)
+	r.Get("/users", apiCfg.getUsers)
 	r.Post("/users", apiCfg.postUsers)
 	return r
 }
@@ -98,6 +100,30 @@ func getReadiness(w http.ResponseWriter, r *http.Request) {
 
 func getErr(w http.ResponseWriter, r *http.Request) {
 	respondWithError(w, http.StatusInternalServerError, "Internal Server Error")
+}
+
+func (cfg apiConfig) getUsers(w http.ResponseWriter, r *http.Request) {
+	auth := r.Header.Get("Authorization")
+	api_key, found := strings.CutPrefix(auth, "ApiKey ")
+	if !found {
+		log.Print("attempt to get user with bad Authorization")
+		respondWithError(w, http.StatusBadRequest, "Missing or Bad Authorization in header")
+		return
+	}
+
+	user, err := cfg.DB.GetUser(cfg.ctx, api_key)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Printf("user not found %s", api_key)
+			respondWithError(w, http.StatusBadRequest, "User not found")
+			return
+		}
+		log.Printf("error getting user %s", err)
+		respondWithError(w, http.StatusInternalServerError, "DB error")
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, UserAsJSON(&user))
 }
 
 func (cfg apiConfig) postUsers(w http.ResponseWriter, r *http.Request) {
