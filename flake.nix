@@ -28,7 +28,16 @@
       pkgs = pkgsFor.${system};
     in {
       default = pkgs.mkShell {
-        nativeBuildInputs = with pkgs; [go postgresql_15 sqlc goose];
+        nativeBuildInputs = with pkgs; [
+          go
+          postgresql_15
+          sqlc
+          goose
+          luajit
+          luajitPackages.http
+          luajitPackages.cjson
+          luajitPackages.fennel
+        ];
       };
     });
   };

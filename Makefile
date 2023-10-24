@@ -23,7 +23,7 @@ all: build/server
 install: all
 	install -D --mode=755 --no-target-directory build/server $(BIN_NAME)
 
-.PHONY: stop watch all
+.PHONY: stop watch all test
 
 # Development niceties
 # --------------------
@@ -37,4 +37,7 @@ stop:
 
 watch:
 	$(MAKE) stop
-	watch $(MAKE) pidfile
+	while true; do $(MAKE) --silent pidfile; sleep 2; done
+
+test: pidfile
+	fennel tests/api/init.fnl
