@@ -92,7 +92,24 @@ func v1Router(apiCfg apiConfig) chi.Router {
 	r.Post("/users", apiCfg.postUsers)
 	r.Post("/feeds", apiCfg.middlewareAuth(apiCfg.postFeeds))
 	r.Get("/feeds", apiCfg.getFeeds)
+	r.Post("/feed_follows", apiCfg.middlewareAuth(apiCfg.postFeedFollow))
+	r.Delete("/feed_follows/{feed_follow_id}", feedFollowCtx(apiCfg.deleteFeedFollow))
+	r.Get("/feed_follows", apiCfg.middlewareAuth(apiCfg.getFeedFollows))
 	return r
+}
+
+func feedFollowCtx(next http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ff_id_str := chi.URLParam(r, "feed_follow_id")
+		ff_id, err := uuid.Parse(ff_id_str)
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, "Invalid Feed Follow ID")
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), "feed_follow_id", ff_id)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
 func getReadiness(w http.ResponseWriter, r *http.Request) {
@@ -229,10 +246,73 @@ func (cfg *apiConfig) getFeeds(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, feeds)
 }
 
+func (cfg *apiConfig) postFeedFollow(w http.ResponseWriter, r *http.Request, user database.User) {
+	type postFeedFollowReq struct {
+		FeedID uuid.UUID `json:"feed_id"`
+	}
 
+	var args postFeedFollowReq
+	err := json.NewDecoder(r.Body).Decode(&args)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Error decoding JSON")
+		return
+	}
+
+	ff, err := cfg.DB.CreateFeedFollow(cfg.ctx, database.CreateFeedFollowParams{
+		ID:        uuid.New(),
+		FeedID:    args.FeedID,
+		UserID:    user.ID,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	})
+
+	if err != nil {
+		log.Printf("db creating feed follow: %s", err)
+		respondWithError(w, http.StatusInternalServerError, "DB Error")
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, ff)
 }
 
+func (cfg *apiConfig) deleteFeedFollow(w http.ResponseWriter, r *http.Request) {
+	ff_id := r.Context().Value("feed_follow_id")
+	if ff_id, ok := ff_id.(uuid.UUID); ok {
 
+		_, err := cfg.DB.DeleteFeedFollow(cfg.ctx, ff_id)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				respondWithError(w, http.StatusNotFound, "Feed Follow not found")
+				return
+			}
+			respondWithError(w, http.StatusInternalServerError, "DB Error")
+			return
+		}
+
+		respondWithJSON(w, http.StatusOK, "ok")
+		return
+	} else {
+		respondWithError(w, http.StatusBadRequest, "Expected feed follow id")
+		return
+	}
+}
+
+func (cfg *apiConfig) getFeedFollows(w http.ResponseWriter, r *http.Request, user database.User) {
+	ffs, err := cfg.DB.GetFeedFollowsOfUser(cfg.ctx, user.ID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			respondWithError(w, http.StatusNotFound, "Feed follow not found")
+		}
+		log.Printf("db getting feed follows: %s", err)
+		respondWithError(w, http.StatusInternalServerError, "DB error")
+		return
+	}
+
+	if ffs == nil {
+		respondWithJSON(w, http.StatusOK, make([]int, 0))
+		return
+	}
+	respondWithJSON(w, http.StatusOK, ffs)
 }
 
 // errors are logged not returned
