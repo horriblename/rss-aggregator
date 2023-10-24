@@ -100,6 +100,7 @@ func v1Router(apiCfg apiConfig) chi.Router {
 	r.Get("/users", apiCfg.middlewareAuth(apiCfg.getUsers))
 	r.Post("/users", apiCfg.postUsers)
 	r.Post("/feeds", apiCfg.middlewareAuth(apiCfg.postFeeds))
+	r.Get("/feeds", apiCfg.getFeeds)
 	return r
 }
 
@@ -226,12 +227,36 @@ func (cfg *apiConfig) postFeeds(w http.ResponseWriter, r *http.Request, user dat
 	respondWithJSON(w, http.StatusOK, FeedAsJSON(&feed))
 }
 
+func (cfg *apiConfig) getFeeds(w http.ResponseWriter, r *http.Request) {
+	var feeds slice[database.Feed, FeedJSON]
+	feeds, err := cfg.DB.GetFeeds(cfg.ctx)
+	if err != nil {
+		log.Printf("db get feeds: %s", err)
+		respondWithError(w, http.StatusInternalServerError, "DB error")
+		return
+	}
+
+	feedsJson := feeds.Map(func(feed database.Feed) FeedJSON { return FeedAsJSON(&feed) })
+	respondWithJSON(w, http.StatusOK, feedsJson)
+}
+
 func UserAsJSON(user *database.User) UserJSON {
 	return UserJSON{user.ID, user.CreatedAt, user.UpdatedAt, user.Name, user.Apikey}
 }
 
 func FeedAsJSON(feed *database.Feed) FeedJSON {
 	return FeedJSON{feed.ID, feed.CreatedAt, feed.UpdatedAt, feed.Name, feed.Url, feed.UserID}
+}
+
+type slice[E, V any] []E
+
+func (s slice[E, V]) Map(iteratee func(E) V) []V {
+	result := make([]V, len(s))
+	for i, item := range s {
+		result[i] = iteratee(item)
+	}
+
+	return result
 }
 
 // errors are logged not returned
