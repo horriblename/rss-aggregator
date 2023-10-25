@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -55,6 +56,8 @@ func main() {
 		log.Printf("opening db: %s", err)
 	}
 	apiCfg := apiConfig{database.New(db), db, context.Background()}
+
+	go fetchFeedLoop(apiCfg)
 
 	err = startServer(cfg, apiCfg)
 	if err != nil {
@@ -359,4 +362,51 @@ func respondWithError(w http.ResponseWriter, status int, msg string) {
 		Error string `json:"error"`
 	}
 	respondWithJSON(w, status, &errMsg{msg})
+}
+
+func fetchFeedLoop(cfg apiConfig) {
+	ticker := time.NewTicker(10 * time.Minute)
+	for {
+		fetchFeeds(cfg)
+		<-ticker.C
+	}
+}
+
+func fetchFeeds(cfg apiConfig) {
+	feeds, err := cfg.queries.GetNextFeedsToFetch(cfg.ctx, 10)
+	if err != nil {
+		log.Printf("db get next feeds to fetch: %s", err)
+		return
+	}
+
+	if len(feeds) == 0 {
+		log.Printf("INFO no feeds to fetch")
+		return
+	}
+
+	log.Printf("INFO fetching %d feeds", len(feeds))
+
+	var wg sync.WaitGroup
+	for _, feed := range feeds {
+		wg.Add(1)
+		go func(url string, feed_id uuid.UUID) {
+			defer wg.Done()
+			log.Printf("INFO fetching from: %s", url)
+			rss, err := fetchFeed(url)
+			if err != nil {
+				log.Printf("fetching feed from %s: %s", url, err)
+				return
+			}
+			log.Printf("INFO got feed: %s", rss.Channel.Title)
+
+			if err := cfg.queries.MarkFeedFetched(cfg.ctx, database.MarkFeedFetchedParams{
+				FetchedAt: sql.NullTime{Time: time.Now(), Valid: true},
+				FeedID:    feed_id,
+			}); err != nil {
+				log.Printf("db mark feed fetched: %s", err)
+			}
+		}(feed.Url, feed.ID)
+	}
+
+	wg.Wait()
 }
