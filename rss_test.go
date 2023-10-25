@@ -2,9 +2,9 @@ package main
 
 import (
 	"encoding/xml"
-	"log"
 	"reflect"
 	"testing"
+	"time"
 )
 
 const testcase = `
@@ -45,8 +45,15 @@ func TestParseRSS(t *testing.T) {
 		t.Errorf("unmarshal xml: %s", err)
 	}
 
-	assert_eq(rss.Channel.Description, "Recent content on Boot.dev Blog")
-	// assert_eq(rss.Channel.Link, "https://blog.boot.dev/")
+	date1, err := time.Parse(time.RFC1123, "Sun, 22 Oct 2023 00:00:00 +0000")
+	if err != nil {
+		t.Errorf("parsing date1: %s", err)
+	}
+	date2, err := time.Parse(time.RFC1123, "Fri, 06 Oct 2023 00:00:00 +0000")
+	if err != nil {
+		t.Errorf("parsing date2: %s", err)
+	}
+
 	expect := RSS{
 		Channel: Channel{
 			Title: "Boot.dev Blog",
@@ -56,11 +63,13 @@ func TestParseRSS(t *testing.T) {
 				{
 					Title:       "Title 1",
 					Link:        "https://blog.boot.dev/blog1",
+					PubDate:     PubDate(date1),
 					Description: "Description One",
 				},
 				{
 					Title:       "Title 2",
 					Link:        "https://blog.boot.dev/blog2",
+					PubDate:     PubDate(date2),
 					Description: "Description Two",
 				},
 			},
@@ -69,11 +78,5 @@ func TestParseRSS(t *testing.T) {
 
 	if !reflect.DeepEqual(expect, rss) {
 		t.Errorf("not equal")
-	}
-}
-
-func assert_eq[T comparable](a T, b T) {
-	if a != b {
-		log.Fatalf("left = %v, right = %v", a, b)
 	}
 }
