@@ -1,4 +1,4 @@
-module Route exposing (Route(..), parseUrl)
+module Route exposing (Route(..), apiBaseUrl, parseUrl)
 
 import Url exposing (Url)
 import Url.Parser exposing (..)
@@ -18,6 +18,11 @@ parseUrl url =
 
         Nothing ->
             NotFound
+
+
+apiBaseUrl : String
+apiBaseUrl =
+    "http://localhost:8080"
 
 
 matchRoute : Parser (Route -> a) a

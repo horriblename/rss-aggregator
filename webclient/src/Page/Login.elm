@@ -52,8 +52,8 @@ view model =
     div []
         [ text "Username"
         , div [] [ viewError model.error ]
-        , input [ type_ "text", onInput OnInputName ] []
-        , button [ placeholder "John", onClick Submit ] []
+        , input [ type_ "text", placeholder "John", onInput OnInputName ] []
+        , button [ onClick Submit ] [ text "Submit" ]
         ]
 
 
