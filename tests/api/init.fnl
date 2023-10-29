@@ -44,8 +44,8 @@
       :POST
       (endpoint :v1/feeds)
       {:headers [authed_header]
-      :body {:name "First Feed by John" :url "example.com"}
-      :asserts [status-ok #(= $.body.url "example.com")]
+      :body {:name "First Feed by John" :url "https://blog.boot.dev/index.xml"}
+      :asserts [status-ok #(= $.body.url "https://blog.boot.dev/index.xml")]
       :scripts [#(set feed_id (assert $.body.id))]})
 
 (test "GET feeds: get feeds"
