@@ -23,6 +23,11 @@ import (
 	_ "github.com/lib/pq"
 )
 
+const (
+	gGetPostDefaultLimit = 20
+	gFetchFeedInterval   = 60 * time.Second
+)
+
 type serverConfig struct {
 	port string
 }
@@ -99,6 +104,7 @@ func v1Router(apiCfg apiConfig) chi.Router {
 	r.Post("/feed_follows", apiCfg.middlewareAuth(apiCfg.postFeedFollow))
 	r.Delete("/feed_follows/{feed_follow_id}", feedFollowCtx(apiCfg.deleteFeedFollow))
 	r.Get("/feed_follows", apiCfg.middlewareAuth(apiCfg.getFeedFollows))
+	r.Get("/posts", apiCfg.middlewareAuth(apiCfg.getPosts))
 	return r
 }
 
@@ -347,6 +353,41 @@ func (cfg *apiConfig) getFeedFollows(w http.ResponseWriter, r *http.Request, use
 	respondWithJSON(w, http.StatusOK, ffs)
 }
 
+func (cfg *apiConfig) getPosts(w http.ResponseWriter, r *http.Request, user database.User) {
+	type getPostsArgs struct {
+		Limit int `json:"limit"`
+	}
+
+	var args getPostsArgs
+	if err := json.NewDecoder(r.Body).Decode(&args); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Could not parse JSON body")
+		return
+	}
+
+	if args.Limit == 0 {
+		args.Limit = gGetPostDefaultLimit
+	}
+
+	posts, err := cfg.queries.GetPostsByUser(cfg.ctx, database.GetPostsByUserParams{
+		UserID: user.ID,
+		Limit:  int32(args.Limit),
+	})
+	log.Printf("[debug] user id: %s\n\tposts: %+v", user.ID, posts)
+
+	if err != nil {
+		log.Printf("db getting user posts: %s", err)
+		respondWithError(w, http.StatusInternalServerError, "couldn't get user posts")
+		return
+	}
+
+	postsJSON := make([]Post, 0, len(posts))
+	for _, post := range posts {
+		postsJSON = append(postsJSON, PostFromDB(&post))
+	}
+
+	respondWithJSON(w, http.StatusOK, postsJSON)
+}
+
 // errors are logged not returned
 func respondWithJSON(w http.ResponseWriter, status int, payload interface{}) {
 	w.WriteHeader(status)
@@ -365,7 +406,7 @@ func respondWithError(w http.ResponseWriter, status int, msg string) {
 }
 
 func fetchFeedLoop(cfg apiConfig) {
-	ticker := time.NewTicker(10 * time.Minute)
+	ticker := time.NewTicker(gFetchFeedInterval)
 	for {
 		fetchFeeds(cfg)
 		<-ticker.C
@@ -389,24 +430,63 @@ func fetchFeeds(cfg apiConfig) {
 	var wg sync.WaitGroup
 	for _, feed := range feeds {
 		wg.Add(1)
-		go func(url string, feed_id uuid.UUID) {
-			defer wg.Done()
-			log.Printf("INFO fetching from: %s", url)
-			rss, err := fetchFeed(url)
-			if err != nil {
-				log.Printf("fetching feed from %s: %s", url, err)
-				return
-			}
-			log.Printf("INFO got feed: %s", rss.Channel.Title)
 
-			if err := cfg.queries.MarkFeedFetched(cfg.ctx, database.MarkFeedFetchedParams{
-				FetchedAt: sql.NullTime{Time: time.Now(), Valid: true},
-				FeedID:    feed_id,
-			}); err != nil {
-				log.Printf("db mark feed fetched: %s", err)
-			}
-		}(feed.Url, feed.ID)
+		var last_fetched *time.Time
+		if feed.LastFetchedAt.Valid {
+			last_fetched = &feed.LastFetchedAt.Time
+		}
+
+		go func(url string, feed_id uuid.UUID, last_fetched *time.Time) {
+			defer wg.Done()
+			cfg.scrapeFeed(url, feed_id, last_fetched)
+		}(feed.Url, feed.ID, last_fetched)
 	}
 
 	wg.Wait()
+}
+
+func (cfg *apiConfig) scrapeFeed(url string, feed_id uuid.UUID, last_fetched *time.Time) {
+	log.Printf("INFO fetching from: %s", url)
+	rss, err := fetchFeed(url)
+	if err != nil {
+		log.Printf("fetching feed from %s: %s", url, err)
+		return
+	}
+
+	items := rss.Channel.Items
+	if last_fetched != nil {
+		end := 0
+		for i, item := range items {
+			if time.Time(item.PubDate).Compare(*last_fetched) <= 0 {
+				end = i
+			}
+		}
+		items = items[:end]
+	}
+
+	for _, item := range items {
+		if len(item.Description) > 511 {
+			item.Description = item.Description[:512]
+		}
+		if _, err := cfg.queries.CreatePost(cfg.ctx, database.CreatePostParams{
+			ID:          uuid.New(),
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+			Title:       item.Title,
+			Url:         item.Link,
+			Description: sql.NullString{String: item.Description, Valid: true},
+			PublishedAt: time.Time(item.PubDate),
+			FeedID:      feed_id,
+		}); err != nil {
+			log.Printf("db create post: %s", err)
+			return
+		}
+	}
+
+	if err := cfg.queries.MarkFeedFetched(cfg.ctx, database.MarkFeedFetchedParams{
+		FetchedAt: sql.NullTime{Time: time.Now(), Valid: true},
+		FeedID:    feed_id,
+	}); err != nil {
+		log.Printf("db mark feed fetched: %s", err)
+	}
 }
