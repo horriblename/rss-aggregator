@@ -281,6 +281,9 @@ func (cfg *apiConfig) getFeeds(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if feeds == nil {
+		feeds = make([]database.Feed, 0)
+	}
 	respondWithJSON(w, http.StatusOK, feeds)
 }
 
