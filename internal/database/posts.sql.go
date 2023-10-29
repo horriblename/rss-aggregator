@@ -64,9 +64,9 @@ func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, e
 }
 
 const getPostsByUser = `-- name: GetPostsByUser :many
-SELECT ff.id, user_id, ff.feed_id, ff.created_at, ff.updated_at, p.id, p.created_at, p.updated_at, title, url, description, published_at, p.feed_id 
-FROM feed_follows ff
-	LEFT JOIN posts p
+SELECT p.id, p.created_at, p.updated_at, p.title, p.url, p.description, p.published_at, p.feed_id
+FROM posts p
+	LEFT JOIN feed_follows ff
 		ON p.feed_id = ff.feed_id
 WHERE ff.user_id = $1
 ORDER BY p.published_at DESC
@@ -78,45 +78,24 @@ type GetPostsByUserParams struct {
 	Limit  int32     `json:"limit"`
 }
 
-type GetPostsByUserRow struct {
-	ID          uuid.UUID      `json:"id"`
-	UserID      uuid.UUID      `json:"user_id"`
-	FeedID      uuid.UUID      `json:"feed_id"`
-	CreatedAt   time.Time      `json:"created_at"`
-	UpdatedAt   time.Time      `json:"updated_at"`
-	ID_2        uuid.NullUUID  `json:"id_2"`
-	CreatedAt_2 sql.NullTime   `json:"created_at_2"`
-	UpdatedAt_2 sql.NullTime   `json:"updated_at_2"`
-	Title       sql.NullString `json:"title"`
-	Url         sql.NullString `json:"url"`
-	Description sql.NullString `json:"description"`
-	PublishedAt sql.NullTime   `json:"published_at"`
-	FeedID_2    uuid.NullUUID  `json:"feed_id_2"`
-}
-
-func (q *Queries) GetPostsByUser(ctx context.Context, arg GetPostsByUserParams) ([]GetPostsByUserRow, error) {
+func (q *Queries) GetPostsByUser(ctx context.Context, arg GetPostsByUserParams) ([]Post, error) {
 	rows, err := q.db.QueryContext(ctx, getPostsByUser, arg.UserID, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetPostsByUserRow
+	var items []Post
 	for rows.Next() {
-		var i GetPostsByUserRow
+		var i Post
 		if err := rows.Scan(
 			&i.ID,
-			&i.UserID,
-			&i.FeedID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.ID_2,
-			&i.CreatedAt_2,
-			&i.UpdatedAt_2,
 			&i.Title,
 			&i.Url,
 			&i.Description,
 			&i.PublishedAt,
-			&i.FeedID_2,
+			&i.FeedID,
 		); err != nil {
 			return nil, err
 		}

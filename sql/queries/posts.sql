@@ -12,9 +12,9 @@ INSERT INTO posts (
 RETURNING *;
 
 -- name: GetPostsByUser :many
-SELECT * 
-FROM feed_follows ff
-	LEFT JOIN posts p
+SELECT p.*
+FROM posts p
+	LEFT JOIN feed_follows ff
 		ON p.feed_id = ff.feed_id
 WHERE ff.user_id = $1
 ORDER BY p.published_at DESC
