@@ -11,7 +11,7 @@ services:
       POSTGRES_PASSWORD_FILE: /run/secrets/db_password
       POSTGRES_USER: rss-aggre
     volumes:
-      - db_data:/postgres
+      - db_data:/var/lib/postgres/data
     secrets:
       - db_password
 
