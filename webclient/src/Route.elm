@@ -8,6 +8,7 @@ type Route
     = NotFound
     | Posts
     | Login
+    | Feeds
 
 
 parseUrl : Url -> Route
@@ -31,4 +32,5 @@ matchRoute =
         [ map Posts top
         , map Posts (s "posts")
         , map Login (s "login")
+        , map Feeds (s "feeds")
         ]

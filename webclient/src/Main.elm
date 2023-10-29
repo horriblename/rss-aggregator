@@ -7,6 +7,7 @@ import Browser.Navigation as Nav
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Page.Login as LoginPage exposing (OutMsg(..))
+import Page.ViewFeeds as FeedsPage
 import Platform.Cmd as Cmd
 import Post exposing (Post)
 import Route exposing (Route)
@@ -45,6 +46,7 @@ type alias Model =
 type Page
     = NotFoundPage
     | LoginPage LoginPage.Model
+    | FeedsPage FeedsPage.Model
 
 
 type alias Flags =
@@ -82,17 +84,45 @@ initCurrentPage ( model, exisitngCmds ) =
                             LoginPage.init ()
                     in
                     ( LoginPage pageModel, Cmd.map LoginPageMsg pageCmds )
+
+                Route.Feeds ->
+                    initAuthedPage FeedsPage.init model FeedsPage FeedsPageMsg
+
+        -- case model.apiKey of
+        --     Nothing ->
+        --         ( NotFoundPage, Nav.pushUrl model.navKey "/login" )
+        --
+        --     Just apiKey ->
+        --         let
+        --             ( pageModel, pageCmds ) =
+        --                 FeedsPage.init apiKey
+        --         in
+        --         ( FeedsPage pageModel, Cmd.map FeedsPage pageCmds )
     in
     ( { model | page = Debug.log "currentPage" currentPage }
     , Cmd.batch [ exisitngCmds, mappedPageCmds ]
     )
 
 
+type alias Init a model msg =
+    a -> ( model, Cmd msg )
 
--- routeToPage : Route -> Page
--- routeToPage route =
---     case route of
---         Not
+
+initAuthedPage : Init String model msg -> Model -> (model -> Page) -> (msg -> Msg) -> ( Page, Cmd Msg )
+initAuthedPage pageInit model toModel toMsg =
+    case model.apiKey of
+        Nothing ->
+            ( NotFoundPage, Nav.pushUrl model.navKey "/login" )
+
+        Just apiKey ->
+            let
+                ( pageModel, pageCmds ) =
+                    pageInit apiKey
+            in
+            ( toModel pageModel, Cmd.map toMsg pageCmds )
+
+
+
 -- PORTS
 
 
@@ -105,6 +135,7 @@ port storeApiKey : String -> Cmd msg
 
 type Msg
     = LoginPageMsg LoginPage.Msg
+    | FeedsPageMsg FeedsPage.Msg
     | LinkClicked UrlRequest
     | UrlChanged Url
 
@@ -142,6 +173,13 @@ update msg model =
                     processSignal updatedModel (LoginPageSignal outMsg)
             in
             ( updatedSignalModel, Cmd.batch [ Cmd.map LoginPageMsg updatedCmd, moreCmd ] )
+
+        ( FeedsPageMsg subMsg, FeedsPage subModel ) ->
+            let
+                ( updatedPageModel, updatedCmd ) =
+                    FeedsPage.update subMsg subModel
+            in
+            ( { model | page = FeedsPage updatedPageModel }, Cmd.map FeedsPageMsg updatedCmd )
 
         ( _, _ ) ->
             ( model, Cmd.none )
@@ -181,6 +219,10 @@ currentView model =
         LoginPage pageModel ->
             LoginPage.view pageModel
                 |> Html.map LoginPageMsg
+
+        FeedsPage pageModel ->
+            FeedsPage.view pageModel
+                |> Html.map FeedsPageMsg
 
 
 notFoundView : Html Msg
