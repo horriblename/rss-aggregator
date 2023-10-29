@@ -9,4 +9,4 @@ all: src/main.js
 .PHONY: pidfile watch
 
 watch:
-	elm-live src/Main.elm --pushstate -- --output $(JS_OUTPUT)
+	elm-live src/Main.elm --pushstate --start-page src/index.html -- --output main.js
