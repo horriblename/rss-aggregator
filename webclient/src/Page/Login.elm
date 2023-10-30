@@ -1,15 +1,19 @@
 module Page.Login exposing (Model, Msg, OutMsg(..), init, update, view)
 
+import Common exposing (Resource(..))
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Http
+import Material.Button as Button
+import Material.TextField as TextField
+import Material.Typography as Typography
 import User exposing (User, registerUser)
 
 
 type alias Model =
     { name : String
-    , error : Maybe String
+    , submitStatus : Maybe (Resource String ())
     }
 
 
@@ -25,7 +29,7 @@ type OutMsg
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { name = "", error = Nothing }, Cmd.none )
+    ( { name = "", submitStatus = Nothing }, Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg, Maybe OutMsg )
@@ -41,27 +45,50 @@ update msg model =
             ( model, Cmd.none, Just <| LoggedIn { apiKey = user.apiKey } )
 
         LoginResult (Err (Http.BadStatus status)) ->
-            ( { model | error = Just <| "Something went wrong: status code " ++ String.fromInt status }, Cmd.none, Nothing )
+            ( { model | submitStatus = Just <| Failed <| "Something went wrong: status code " ++ String.fromInt status }, Cmd.none, Nothing )
 
         LoginResult (Err _) ->
-            ( { model | error = Just "Something went wrong" }, Cmd.none, Nothing )
+            ( { model | submitStatus = Just <| Failed "Something went wrong" }, Cmd.none, Nothing )
 
 
 view : Model -> Html Msg
 view model =
-    Html.form [ onSubmit Submit ]
-        [ text "Username"
-        , div [] [ viewError model.error ]
-        , input [ type_ "text", placeholder "John", onInput OnInputName ] []
-        , input [ type_ "submit" ] [ text "Submit" ]
+    Html.form [ onSubmit Submit, class "mdc-layout-grid", Typography.typography ]
+        [ viewError model.submitStatus
+        , div []
+            [ TextField.filled
+                (TextField.config
+                    |> TextField.setLabel (Just "Name")
+                    |> TextField.setOnInput OnInputName
+                    |> TextField.setPlaceholder (Just "John")
+                )
+            ]
+        , div []
+            [ Button.raised
+                (Button.config
+                    |> Button.setAttributes [ type_ "submit" ]
+                    |> Button.setDisabled
+                        (case model.submitStatus of
+                            Just Loading ->
+                                True
+
+                            Just (Loaded _) ->
+                                True
+
+                            _ ->
+                                False
+                        )
+                )
+                "Submit"
+            ]
         ]
 
 
-viewError : Maybe String -> Html Msg
-viewError errMsg =
-    case errMsg of
-        Just msg ->
-            text msg
+viewError : Maybe (Resource String ()) -> Html Msg
+viewError res =
+    case res of
+        Just (Failed err) ->
+            text err
 
-        Nothing ->
+        _ ->
             text ""

@@ -6,6 +6,7 @@ import Browser exposing (Document, UrlRequest)
 import Browser.Navigation as Nav
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Material.Typography exposing (typography)
 import Page.Login as LoginPage exposing (OutMsg(..))
 import Page.ViewFeeds as FeedsPage
 import Page.ViewPosts as PostsPage
@@ -216,7 +217,7 @@ processSignal model signal =
 view : Model -> Document Msg
 view model =
     { title = "RSS Aggregator"
-    , body = [ currentView model ]
+    , body = [ Html.div [ typography ] [ currentView model ] ]
     }
 
 
