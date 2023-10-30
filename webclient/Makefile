@@ -6,7 +6,7 @@ $(JS_OUTPUT): $(wildcard src/*.elm)
 
 all: src/main.js
 
-.PHONY: pidfile watch
+.PHONY: watch
 
 watch:
-	elm-live src/Main.elm --pushstate --start-page src/index.html -- --output main.js
+	elm-live --pushstate --start-page index.html src/Main.elm -- --output main.js
