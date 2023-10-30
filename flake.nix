@@ -28,7 +28,8 @@
       pkgs = pkgsFor.${system};
     in {
       default = pkgs.mkShell {
-        nativeBuildInputs = with pkgs; [
+        nativeBuildInputs = with pkgs;
+        with elmPackages; [
           go
           postgresql_15
           sqlc
@@ -37,6 +38,11 @@
           luajitPackages.http
           luajitPackages.cjson
           luajitPackages.fennel
+          elm
+          elm-language-server
+          elm-format
+          elm-test
+          elm-live
         ];
       };
     });
