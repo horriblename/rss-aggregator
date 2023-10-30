@@ -358,14 +358,12 @@ func (cfg *apiConfig) getFeedFollows(w http.ResponseWriter, r *http.Request, use
 
 func (cfg *apiConfig) getPosts(w http.ResponseWriter, r *http.Request, user database.User) {
 	type getPostsArgs struct {
-		Limit int `json:"limit"`
+		Limit int `json:"limit,omit_empty"`
 	}
 
 	var args getPostsArgs
-	if err := json.NewDecoder(r.Body).Decode(&args); err != nil {
-		respondWithError(w, http.StatusBadRequest, "Could not parse JSON body")
-		return
-	}
+	// FIXME: GET requests _should_ not accept a body - if possible, use query string parameters instead
+	_ = json.NewDecoder(r.Body).Decode(&args)
 
 	if args.Limit == 0 {
 		args.Limit = gGetPostDefaultLimit
