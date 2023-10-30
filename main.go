@@ -373,7 +373,6 @@ func (cfg *apiConfig) getPosts(w http.ResponseWriter, r *http.Request, user data
 		UserID: user.ID,
 		Limit:  int32(args.Limit),
 	})
-	log.Printf("[debug] user id: %s\n\tposts: %+v", user.ID, posts)
 
 	if err != nil {
 		log.Printf("db getting user posts: %s", err)
