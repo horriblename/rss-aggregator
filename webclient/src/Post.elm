@@ -4,11 +4,11 @@ module Post exposing (Post, fetchPosts)
 -- import Json.Encode as E
 
 import Http exposing (header)
-import Json.Decode as Decode exposing (Decoder, int, list, map, maybe, string)
+import Iso8601
+import Json.Decode as Decode exposing (Decoder, andThen, list, map, maybe, string)
 import Json.Decode.Pipeline exposing (required)
-import Json.Encode as Encode
 import Route exposing (apiBaseUrl)
-import Time exposing (millisToPosix)
+import Time
 
 
 type alias Post =
@@ -27,27 +27,13 @@ postDecoder : Decoder Post
 postDecoder =
     Decode.succeed Post
         |> required "id" string
-        |> required "created_at" (map millisToPosix int)
-        |> required "updated_at" (map millisToPosix int)
+        |> required "created_at" (andThen (\_ -> Iso8601.decoder) string)
+        |> required "updated_at" (andThen (\_ -> Iso8601.decoder) string)
         |> required "title" string
         |> required "url" string
         |> required "description" (maybe string)
-        |> required "published_at" (map millisToPosix int)
+        |> required "published_at" (andThen (\_ -> Iso8601.decoder) string)
         |> required "feed_id" string
-
-
-type alias FetchPostsParams =
-    { limit : Maybe Int }
-
-
-encodeFetchPostsParam : FetchPostsParams -> Encode.Value
-encodeFetchPostsParam params =
-    case params.limit of
-        Nothing ->
-            Encode.object []
-
-        Just limit ->
-            Encode.object [ ( "limit", Encode.int limit ) ]
 
 
 fetchPosts : String -> (Result Http.Error (List Post) -> msg) -> Cmd msg
@@ -56,7 +42,7 @@ fetchPosts apiKey toMsg =
         { method = "GET"
         , headers = [ header "Authorization" <| "ApiKey " ++ apiKey ]
         , url = apiBaseUrl ++ "/v1/posts"
-        , body = Http.stringBody "text/plain" "hello"
+        , body = Http.emptyBody
         , expect = Http.expectJson toMsg (list postDecoder)
         , timeout = Nothing
         , tracker = Nothing
