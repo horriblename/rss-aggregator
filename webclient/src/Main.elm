@@ -8,6 +8,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Page.Login as LoginPage exposing (OutMsg(..))
 import Page.ViewFeeds as FeedsPage
+import Page.ViewPosts as PostsPage
 import Platform.Cmd as Cmd
 import Post exposing (Post)
 import Route exposing (Route)
@@ -47,6 +48,7 @@ type Page
     = NotFoundPage
     | LoginPage LoginPage.Model
     | FeedsPage FeedsPage.Model
+    | PostsPage PostsPage.Model
 
 
 type alias Flags =
@@ -76,7 +78,7 @@ initCurrentPage ( model, exisitngCmds ) =
                     ( NotFoundPage, Cmd.none )
 
                 Route.Posts ->
-                    Debug.todo ""
+                    initAuthedPage PostsPage.init model PostsPage PostsPageMsg
 
                 Route.Login ->
                     let
@@ -136,6 +138,7 @@ port storeApiKey : String -> Cmd msg
 type Msg
     = LoginPageMsg LoginPage.Msg
     | FeedsPageMsg FeedsPage.Msg
+    | PostsPageMsg PostsPage.Msg
     | LinkClicked UrlRequest
     | UrlChanged Url
 
@@ -181,6 +184,13 @@ update msg model =
             in
             ( { model | page = FeedsPage updatedPageModel }, Cmd.map FeedsPageMsg updatedCmd )
 
+        ( PostsPageMsg subMsg, PostsPage subModel ) ->
+            let
+                ( updatedPageModel, updatedCmd ) =
+                    PostsPage.update subMsg subModel
+            in
+            ( { model | page = PostsPage updatedPageModel }, Cmd.map PostsPageMsg updatedCmd )
+
         ( _, _ ) ->
             ( model, Cmd.none )
 
@@ -223,6 +233,10 @@ currentView model =
         FeedsPage pageModel ->
             FeedsPage.view pageModel
                 |> Html.map FeedsPageMsg
+
+        PostsPage pageModel ->
+            PostsPage.view pageModel
+                |> Html.map PostsPageMsg
 
 
 notFoundView : Html Msg

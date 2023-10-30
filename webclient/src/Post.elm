@@ -1,10 +1,13 @@
-module Post exposing (Post)
+module Post exposing (Post, fetchPosts)
 
 -- import Json.Decode as D
 -- import Json.Encode as E
 
-import Json.Decode as Decode exposing (Decoder, int, map, maybe, string)
+import Http exposing (header)
+import Json.Decode as Decode exposing (Decoder, int, list, map, maybe, string)
 import Json.Decode.Pipeline exposing (required)
+import Json.Encode as Encode
+import Route exposing (apiBaseUrl)
 import Time exposing (millisToPosix)
 
 
@@ -20,17 +23,6 @@ type alias Post =
     }
 
 
-
--- ID          uuid.UUID `json:"
--- 	CreatedAt   time.Time `json:"
--- 	UpdatedAt   time.Time `json:"
--- 	Title       string    `json:"
--- 	Url         string    `json:"
--- 	Description string    `json:"
--- 	PublishedAt time.Time `json:"
--- 	FeedID      uuid.UUID `json:"
-
-
 postDecoder : Decoder Post
 postDecoder =
     Decode.succeed Post
@@ -42,3 +34,30 @@ postDecoder =
         |> required "description" (maybe string)
         |> required "published_at" (map millisToPosix int)
         |> required "feed_id" string
+
+
+type alias FetchPostsParams =
+    { limit : Maybe Int }
+
+
+encodeFetchPostsParam : FetchPostsParams -> Encode.Value
+encodeFetchPostsParam params =
+    case params.limit of
+        Nothing ->
+            Encode.object []
+
+        Just limit ->
+            Encode.object [ ( "limit", Encode.int limit ) ]
+
+
+fetchPosts : String -> (Result Http.Error (List Post) -> msg) -> Cmd msg
+fetchPosts apiKey toMsg =
+    Http.request
+        { method = "GET"
+        , headers = [ header "Authorization" <| "ApiKey " ++ apiKey ]
+        , url = apiBaseUrl ++ "/v1/posts"
+        , body = Http.stringBody "text/plain" "hello"
+        , expect = Http.expectJson toMsg (list postDecoder)
+        , timeout = Nothing
+        , tracker = Nothing
+        }
