@@ -2,7 +2,11 @@ module Page.ViewPosts exposing (Model, Msg, init, update, view)
 
 import Common exposing (Resource(..))
 import Html exposing (..)
+import Html.Attributes exposing (href)
 import Http exposing (Error(..))
+import Json.Decode as Decode
+import Material.Card as Card
+import Material.LayoutGrid as Grid
 import Post exposing (Post, fetchPosts)
 import Task
 import Time exposing (Month(..))
@@ -63,7 +67,7 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    case Debug.log "view posts" model.posts of
+    case model.posts of
         Loading ->
             viewLoading
 
@@ -93,14 +97,27 @@ viewPosts posts zone =
         text "You have no posts"
 
     else
-        table [] <| List.map (viewPost zone) posts
+        Grid.layoutGrid []
+            [ Grid.inner [] <| List.map (viewPost zone) posts ]
 
 
 viewPost : Resource () Time.Zone -> Post -> Html Msg
 viewPost zone post =
-    tr []
-        [ td [] [ text <| formatDate zone post.published_at ]
-        , td [] [ text post.title ]
+    Grid.cell []
+        [ Card.card (Card.config |> Card.setHref (Just post.url))
+            { blocks =
+                ( Card.block <|
+                    Html.div []
+                        [ Html.h2 [] [ text post.title ]
+                        , Html.i [] [ text <| "Published on: " ++ formatDate zone post.published_at ]
+                        ]
+                , [ Card.block <|
+                        Html.div []
+                            [ Html.p [] [ text <| Maybe.withDefault "" post.description ] ]
+                  ]
+                )
+            , actions = Nothing
+            }
         ]
 
 
