@@ -49,11 +49,11 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    div []
+    Html.form [ onSubmit Submit ]
         [ text "Username"
         , div [] [ viewError model.error ]
         , input [ type_ "text", placeholder "John", onInput OnInputName ] []
-        , button [ onClick Submit ] [ text "Submit" ]
+        , input [ type_ "submit" ] [ text "Submit" ]
         ]
 
 
