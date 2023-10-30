@@ -1,5 +1,6 @@
 module Page.ViewFeeds exposing (Model, Msg, init, update, view)
 
+import Common exposing (Resource(..))
 import Feed exposing (Feed, fetchFeeds)
 import Html exposing (..)
 import Http exposing (Error(..))
@@ -9,12 +10,6 @@ import Url exposing (Protocol(..))
 type alias Model =
     { feeds : Resource String (List Feed)
     }
-
-
-type Resource err a
-    = Loading
-    | Failed err
-    | Loaded a
 
 
 type Msg

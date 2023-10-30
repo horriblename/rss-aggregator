@@ -1,5 +1,6 @@
 module Page.ViewPosts exposing (Model, Msg, init, update, view)
 
+import Common exposing (Resource(..))
 import Html exposing (..)
 import Http exposing (Error(..))
 import Post exposing (Post, fetchPosts)
@@ -12,12 +13,6 @@ type alias Model =
     { posts : Resource String (List Post)
     , timezone : Resource () Time.Zone
     }
-
-
-type Resource err a
-    = Loading
-    | Failed err
-    | Loaded a
 
 
 type Msg
