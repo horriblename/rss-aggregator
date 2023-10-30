@@ -139,14 +139,14 @@ func (cfg *apiConfig) middlewareAuth(handler authedHandler) http.HandlerFunc {
 		api_key, found := strings.CutPrefix(auth, "ApiKey ")
 		if !found {
 			log.Print("attempt to get user with bad Authorization")
-			respondWithError(w, http.StatusBadRequest, "Missing or Bad Authorization in header")
+			respondWithError(w, http.StatusUnauthorized, "Missing or Bad Authorization in header")
 			return
 		}
 
 		user, err := cfg.queries.GetUser(cfg.ctx, api_key)
 		if err != nil {
 			if err == sql.ErrNoRows {
-				respondWithError(w, http.StatusBadRequest, "User Not Found")
+				respondWithError(w, http.StatusUnauthorized, "Unrecognized API Key")
 				return
 			}
 			log.Printf("middlewareAuth db error: %s", err)
