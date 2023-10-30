@@ -37,16 +37,35 @@ func (pd *PubDate) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 		return err
 	}
 
+	// FIXME: parse header and determine which date format to use instead of brute-forcing both
+
+	// RSS 1.0
 	// https://www.rssboard.org/rss-specification#ltpubdategtSubelementOfLtitemgt
 	// example sub-element: <pubDate>Sun, 19 May 2002 15:21:36 GMT</pubDate>
-
 	t, err := time.Parse(time.RFC1123, s)
-	if err != nil {
-		return err
+	if err == nil {
+		*pd = PubDate(t)
+		return nil
 	}
 
-	*pd = PubDate(t)
-	return nil
+	// RSS 2.0
+	// Uses the [RFC 822 time format](https://validator.w3.org/feed/docs/warning/ProblematicalRFC822Date.html)
+	// In particular: the year SHOULD be expressed as four digits
+	//
+	// Note that go's builtin time.RFC822 seems completely different from what we need
+	t, err = time.Parse("Mon, 02 Jan 2006 15:04:05 -0700", s)
+	if err == nil {
+		*pd = PubDate(t)
+		return nil
+	}
+
+	t, err = time.Parse("Mon, 02 Jan 06 15:04:05 -0700", s)
+	if err == nil {
+		*pd = PubDate(t)
+		return nil
+	}
+
+	return err
 }
 
 func fetchFeed(url string) (RSS, error) {
