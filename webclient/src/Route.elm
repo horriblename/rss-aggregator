@@ -9,6 +9,7 @@ type Route
     | Posts
     | Login
     | Feeds
+    | NewFeed
 
 
 parseUrl : Url -> Route
@@ -33,4 +34,5 @@ matchRoute =
         , map Posts (s "posts")
         , map Login (s "login")
         , map Feeds (s "feeds")
+        , map NewFeed (s "feeds" </> s "new")
         ]

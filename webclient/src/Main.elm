@@ -6,8 +6,10 @@ import Browser exposing (Document, UrlRequest)
 import Browser.Navigation as Nav
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Json.Decode as Decode
 import Material.Typography exposing (typography)
 import Page.Login as LoginPage exposing (OutMsg(..))
+import Page.NewFeed as NewFeedPage exposing (OutMsg(..))
 import Page.ViewFeeds as FeedsPage
 import Page.ViewPosts as PostsPage
 import Platform.Cmd as Cmd
@@ -50,6 +52,7 @@ type Page
     | LoginPage LoginPage.Model
     | FeedsPage FeedsPage.Model
     | PostsPage PostsPage.Model
+    | NewFeedPage NewFeedPage.Model
 
 
 type alias Flags =
@@ -91,16 +94,8 @@ initCurrentPage ( model, exisitngCmds ) =
                 Route.Feeds ->
                     initAuthedPage FeedsPage.init model FeedsPage FeedsPageMsg
 
-        -- case model.apiKey of
-        --     Nothing ->
-        --         ( NotFoundPage, Nav.pushUrl model.navKey "/login" )
-        --
-        --     Just apiKey ->
-        --         let
-        --             ( pageModel, pageCmds ) =
-        --                 FeedsPage.init apiKey
-        --         in
-        --         ( FeedsPage pageModel, Cmd.map FeedsPage pageCmds )
+                Route.NewFeed ->
+                    initAuthedPage NewFeedPage.init model NewFeedPage NewFeedPageMsg
     in
     ( { model | page = Debug.log "currentPage" currentPage }
     , Cmd.batch [ exisitngCmds, mappedPageCmds ]
@@ -140,6 +135,7 @@ type Msg
     = LoginPageMsg LoginPage.Msg
     | FeedsPageMsg FeedsPage.Msg
     | PostsPageMsg PostsPage.Msg
+    | NewFeedPageMsg NewFeedPage.Msg
     | LinkClicked UrlRequest
     | UrlChanged Url
 
@@ -192,12 +188,26 @@ update msg model =
             in
             ( { model | page = PostsPage updatedPageModel }, Cmd.map PostsPageMsg updatedCmd )
 
+        ( NewFeedPageMsg subMsg, NewFeedPage subModel ) ->
+            let
+                ( updatedPageModel, updatedCmd, outMsg ) =
+                    NewFeedPage.update subMsg subModel
+
+                updatedModel =
+                    { model | page = NewFeedPage updatedPageModel }
+
+                ( updatedSignalModel, moreCmd ) =
+                    processSignal updatedModel (NewFeedPageSignal outMsg)
+            in
+            ( updatedSignalModel, Cmd.batch [ Cmd.map NewFeedPageMsg updatedCmd, moreCmd ] )
+
         ( _, _ ) ->
             ( model, Cmd.none )
 
 
 type SignalFromChild
     = LoginPageSignal (Maybe LoginPage.OutMsg)
+    | NewFeedPageSignal (Maybe NewFeedPage.OutMsg)
 
 
 processSignal : Model -> SignalFromChild -> ( Model, Cmd Msg )
@@ -205,6 +215,9 @@ processSignal model signal =
     case signal of
         LoginPageSignal (Just (LoggedIn { apiKey })) ->
             ( { model | apiKey = Just apiKey }, storeApiKey apiKey )
+
+        NewFeedPageSignal (Just CreatedFeed) ->
+            ( model, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
@@ -217,7 +230,10 @@ processSignal model signal =
 view : Model -> Document Msg
 view model =
     { title = "RSS Aggregator"
-    , body = [ Html.div [ typography ] [ currentView model ] ]
+    , body =
+        [ Html.div [ typography ]
+            [ currentView model ]
+        ]
     }
 
 
@@ -238,6 +254,10 @@ currentView model =
         PostsPage pageModel ->
             PostsPage.view pageModel
                 |> Html.map PostsPageMsg
+
+        NewFeedPage pageModel ->
+            NewFeedPage.view pageModel
+                |> Html.map NewFeedPageMsg
 
 
 notFoundView : Html Msg
