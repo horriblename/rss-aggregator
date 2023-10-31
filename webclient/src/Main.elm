@@ -4,9 +4,11 @@ port module Main exposing (main, storeApiKey)
 
 import Browser exposing (Document, UrlRequest)
 import Browser.Navigation as Nav
+import Drawer
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Json.Decode as Decode
+import Material.IconButton as IconButton
+import Material.TopAppBar as TopAppBar
 import Material.Typography exposing (typography)
 import Page.Login as LoginPage exposing (OutMsg(..))
 import Page.NewFeed as NewFeedPage exposing (OutMsg(..))
@@ -44,6 +46,7 @@ type alias Model =
     , route : Route
     , page : Page
     , navKey : Nav.Key
+    , drawer : Drawer.Model
     }
 
 
@@ -68,6 +71,7 @@ init flags url navKey =
             , route = Route.parseUrl (Debug.log "url" url)
             , page = NotFoundPage
             , navKey = navKey
+            , drawer = Drawer.initialModel
             }
     in
     initCurrentPage ( model, Cmd.none )
@@ -138,6 +142,7 @@ type Msg
     | NewFeedPageMsg NewFeedPage.Msg
     | LinkClicked UrlRequest
     | UrlChanged Url
+    | DrawerMsg Drawer.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -160,6 +165,9 @@ update msg model =
             in
             ( { model | route = newRoute }, Cmd.none )
                 |> initCurrentPage
+
+        ( DrawerMsg subMsg, _ ) ->
+            ( { model | drawer = Drawer.update subMsg model.drawer }, Cmd.none )
 
         ( LoginPageMsg subMsg, LoginPage subModel ) ->
             let
@@ -231,10 +239,49 @@ view : Model -> Document Msg
 view model =
     { title = "RSS Aggregator"
     , body =
-        [ Html.div [ typography ]
-            [ currentView model ]
+        [ Html.div (typography :: drawerFrameRoot)
+            [ Html.map DrawerMsg <| Drawer.view model.drawer
+            , Drawer.scrim
+            , Html.div [ typography ]
+                [ viewTopBar model.drawer.open
+                , Html.div [ TopAppBar.fixedAdjust ] [ currentView model ]
+                ]
+            ]
         ]
     }
+
+
+viewTopBar : Bool -> Html Msg
+viewTopBar drawerIsOpen =
+    TopAppBar.regular TopAppBar.config
+        [ TopAppBar.row []
+            [ TopAppBar.section [ TopAppBar.alignStart ]
+                [ IconButton.iconButton
+                    (IconButton.config
+                        |> IconButton.setAttributes [ TopAppBar.navigationIcon ]
+                        |> IconButton.setOnClick
+                            (DrawerMsg
+                                (if drawerIsOpen then
+                                    Drawer.CloseDrawer
+
+                                 else
+                                    Drawer.OpenDrawer
+                                )
+                            )
+                    )
+                    (IconButton.icon "menu")
+                , span [ TopAppBar.title ] [ text "RSS Aggregator" ]
+                ]
+            ]
+        ]
+
+
+drawerFrameRoot : List (Html.Attribute msg)
+drawerFrameRoot =
+    [ style "display" "-ms-flexbox"
+    , style "display" "flex"
+    , style "height" "100vh"
+    ]
 
 
 currentView : Model -> Html Msg
