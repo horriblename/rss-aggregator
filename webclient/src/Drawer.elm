@@ -3,6 +3,7 @@ module Drawer exposing (Model, Msg(..), initialModel, scrim, update, view)
 import Html exposing (Html)
 import Material.Button as Button
 import Material.Drawer.Modal as ModalDrawer
+import Material.Icon as Icon
 import Material.List as List
 import Material.List.Item as ListItem
 
@@ -45,14 +46,13 @@ view : Model -> Html Msg
 view model =
     let
         listItem icon label url =
-            ListItem.listItem ListItem.config
-                [ Button.text
-                    (Button.config
-                        |> Button.setHref (Just url)
-                        |> Button.setIcon (Just (Button.icon icon))
-                        |> Button.setOnClick CloseDrawer
-                    )
-                    label
+            ListItem.listItem
+                (ListItem.config
+                    |> ListItem.setHref (Just url)
+                    |> ListItem.setOnClick CloseDrawer
+                )
+                [ ListItem.graphic [] [ Icon.icon [] icon ]
+                , Html.text label
                 ]
     in
     ModalDrawer.drawer
@@ -63,7 +63,7 @@ view model =
         [ List.list
             List.config
             (listItem "home" "Home" "/")
-            [ listItem "feeds" "Feeds" "/feeds" ]
+            [ listItem "feed" "Feeds" "/feeds" ]
         ]
 
 
