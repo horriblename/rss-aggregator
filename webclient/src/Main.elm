@@ -222,7 +222,7 @@ processSignal : Model -> SignalFromChild -> ( Model, Cmd Msg )
 processSignal model signal =
     case signal of
         LoginPageSignal (Just (LoggedIn { apiKey })) ->
-            ( { model | apiKey = Just apiKey }, storeApiKey apiKey )
+            ( { model | apiKey = Just apiKey }, Cmd.batch [ storeApiKey apiKey, Nav.pushUrl model.navKey "/" ] )
 
         NewFeedPageSignal (Just CreatedFeed) ->
             ( model, Cmd.none )
