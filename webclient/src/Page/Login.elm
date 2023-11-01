@@ -1,13 +1,13 @@
 module Page.Login exposing (Model, Msg, OutMsg(..), init, update, view)
 
-import Common exposing (Resource(..))
+import Common exposing (Resource(..), errorBox, padContent)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Http
 import Material.Button as Button
+import Material.Elevation as Elevation
 import Material.TextField as TextField
-import Material.Typography as Typography
 import User exposing (User, registerUser)
 
 
@@ -65,9 +65,10 @@ view model =
                 _ ->
                     False
     in
-    Html.form [ onSubmit Submit, class "mdc-layout-grid", Typography.typography ]
-        [ viewError model.submitStatus
-        , div []
+    Html.form [ onSubmit Submit, Elevation.z12, padContent ]
+        [ div [ padContent ] [ h1 [] [ text "Login" ] ]
+        , viewError model.submitStatus
+        , div [ padContent ]
             [ TextField.filled
                 (TextField.config
                     |> TextField.setLabel (Just "Name")
@@ -75,7 +76,7 @@ view model =
                     |> TextField.setPlaceholder (Just "John")
                 )
             ]
-        , div []
+        , div [ padContent, style "text-align" "right" ]
             [ Button.raised
                 (Button.config
                     |> Button.setAttributes [ type_ "submit" ]
@@ -90,7 +91,7 @@ viewError : Maybe (Resource String ()) -> Html Msg
 viewError res =
     case res of
         Just (Failed err) ->
-            text err
+            errorBox (Just err)
 
         _ ->
             text ""

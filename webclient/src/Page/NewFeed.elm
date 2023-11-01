@@ -1,6 +1,6 @@
 module Page.NewFeed exposing (Model, Msg, OutMsg(..), init, update, view)
 
-import Common exposing (Resource(..))
+import Common exposing (Resource(..), errorBox, padContent)
 import Feed exposing (Feed, createFeed)
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -78,26 +78,24 @@ update msg model =
 view : Model -> Html Msg
 view model =
     let
-        wrapElement el =
-            Html.div [ style "padding" "1rem" ] [ el ]
-
         textField label placeholder toMsg =
-            wrapElement <|
-                TextField.filled
+            div [ padContent ]
+                [ TextField.filled
                     (TextField.config
                         |> TextField.setPlaceholder (Just placeholder)
                         |> TextField.setLabel (Just label)
                         |> TextField.setOnInput toMsg
                      -- |> TextField.setAttributes [ style "margin" "0 auto" ]
                     )
+                ]
 
         errMsg =
             case model.createResult of
                 Just (Failed err) ->
-                    err
+                    errorBox (Just err)
 
                 _ ->
-                    ""
+                    text ""
 
         disableButton =
             case model.createResult of
@@ -111,14 +109,15 @@ view model =
                     False
     in
     Html.form [ onSubmit Submit, Elevation.z12, style "padding" "1rem" ]
-        [ text errMsg
+        [ errMsg
         , textField "Name" "Jame's Blog" OnInputName
         , textField "URL" "www.example.com/rss.xml" OnInputUrl
-        , wrapElement <|
-            Button.raised
+        , div [ padContent, style "text-align" "right" ]
+            [ Button.raised
                 (Button.config
                     |> Button.setAttributes [ type_ "submit" ]
                     |> Button.setDisabled disableButton
                 )
                 "Submit"
+            ]
         ]

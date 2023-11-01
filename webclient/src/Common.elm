@@ -1,4 +1,7 @@
-module Common exposing (Resource(..), isFailed, isLoaded, isLoading)
+module Common exposing (Resource(..), errorBox, padContent)
+
+import Html exposing (Html)
+import Html.Attributes exposing (style)
 
 
 type Resource err a
@@ -7,31 +10,16 @@ type Resource err a
     | Loaded a
 
 
-isLoaded : Resource err a -> Bool
-isLoaded res =
-    case res of
-        Loaded _ ->
-            True
+errorBox : Maybe String -> Html msg
+errorBox err =
+    case err of
+        Just errMsg ->
+            Html.div [ padContent, style "color" "red" ] [ Html.text errMsg ]
 
-        _ ->
-            False
-
-
-isLoading : Resource err a -> Bool
-isLoading res =
-    case res of
-        Loading ->
-            True
-
-        _ ->
-            False
+        Nothing ->
+            Html.text ""
 
 
-isFailed : Resource err a -> Bool
-isFailed res =
-    case res of
-        Failed _ ->
-            True
-
-        _ ->
-            False
+padContent : Html.Attribute msg
+padContent =
+    style "padding" "1rem"
