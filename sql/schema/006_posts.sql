@@ -1,6 +1,6 @@
 -- +goose Up
 CREATE TABLE posts (
-	id UUID NOT NULL,
+	id UUID NOT NULL PRIMARY KEY,
 	created_at TIMESTAMP NOT NULL,
 	updated_at TIMESTAMP NOT NULL,
 	title TEXT NOT NULL,

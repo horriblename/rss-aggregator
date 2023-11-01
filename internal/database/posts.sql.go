@@ -22,9 +22,10 @@ INSERT INTO posts (
 	url,
 	description,
 	published_at,
-	feed_id
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, created_at, updated_at, title, url, description, published_at, feed_id
+	feed_id,
+	media_id
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, created_at, updated_at, title, url, description, published_at, feed_id, guid, media_id
 `
 
 type CreatePostParams struct {
@@ -36,6 +37,7 @@ type CreatePostParams struct {
 	Description sql.NullString `json:"description"`
 	PublishedAt time.Time      `json:"published_at"`
 	FeedID      uuid.UUID      `json:"feed_id"`
+	MediaID     uuid.NullUUID  `json:"media_id"`
 }
 
 func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, error) {
@@ -48,6 +50,7 @@ func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, e
 		arg.Description,
 		arg.PublishedAt,
 		arg.FeedID,
+		arg.MediaID,
 	)
 	var i Post
 	err := row.Scan(
@@ -59,15 +62,19 @@ func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, e
 		&i.Description,
 		&i.PublishedAt,
 		&i.FeedID,
+		&i.Guid,
+		&i.MediaID,
 	)
 	return i, err
 }
 
 const getPostsByUser = `-- name: GetPostsByUser :many
-SELECT p.id, p.created_at, p.updated_at, p.title, p.url, p.description, p.published_at, p.feed_id
+SELECT p.id, p.created_at, p.updated_at, p.title, p.url, p.description, p.published_at, p.feed_id, p.guid, p.media_id, m.url AS media_url, m.length_ AS media_length, m.mimetype AS media_type
 FROM posts p
 	LEFT JOIN feed_follows ff
 		ON p.feed_id = ff.feed_id
+	LEFT JOIN media m
+		ON m.id = p.media_id
 WHERE ff.user_id = $1
 ORDER BY p.published_at DESC
 LIMIT $2
@@ -78,15 +85,31 @@ type GetPostsByUserParams struct {
 	Limit  int32     `json:"limit"`
 }
 
-func (q *Queries) GetPostsByUser(ctx context.Context, arg GetPostsByUserParams) ([]Post, error) {
+type GetPostsByUserRow struct {
+	ID          uuid.UUID      `json:"id"`
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+	Title       string         `json:"title"`
+	Url         string         `json:"url"`
+	Description sql.NullString `json:"description"`
+	PublishedAt time.Time      `json:"published_at"`
+	FeedID      uuid.UUID      `json:"feed_id"`
+	Guid        sql.NullString `json:"guid"`
+	MediaID     uuid.NullUUID  `json:"media_id"`
+	MediaUrl    sql.NullString `json:"media_url"`
+	MediaLength sql.NullInt32  `json:"media_length"`
+	MediaType   sql.NullString `json:"media_type"`
+}
+
+func (q *Queries) GetPostsByUser(ctx context.Context, arg GetPostsByUserParams) ([]GetPostsByUserRow, error) {
 	rows, err := q.db.QueryContext(ctx, getPostsByUser, arg.UserID, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Post
+	var items []GetPostsByUserRow
 	for rows.Next() {
-		var i Post
+		var i GetPostsByUserRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.CreatedAt,
@@ -96,6 +119,11 @@ func (q *Queries) GetPostsByUser(ctx context.Context, arg GetPostsByUserParams) 
 			&i.Description,
 			&i.PublishedAt,
 			&i.FeedID,
+			&i.Guid,
+			&i.MediaID,
+			&i.MediaUrl,
+			&i.MediaLength,
+			&i.MediaType,
 		); err != nil {
 			return nil, err
 		}
