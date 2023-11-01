@@ -29,6 +29,13 @@ type FeedFollow struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+type Medium struct {
+	ID       uuid.UUID `json:"id"`
+	Url      string    `json:"url"`
+	Length   int32     `json:"length_"`
+	Mimetype string    `json:"mimetype"`
+}
+
 type Post struct {
 	ID          uuid.UUID      `json:"id"`
 	CreatedAt   time.Time      `json:"created_at"`
@@ -38,6 +45,8 @@ type Post struct {
 	Description sql.NullString `json:"description"`
 	PublishedAt time.Time      `json:"published_at"`
 	FeedID      uuid.UUID      `json:"feed_id"`
+	Guid        sql.NullString `json:"guid"`
+	MediaID     uuid.NullUUID  `json:"media_id"`
 }
 
 type User struct {

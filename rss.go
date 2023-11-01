@@ -19,10 +19,19 @@ type Channel struct {
 }
 
 type Item struct {
-	Title       string  `xml:"title"`
-	Link        string  `xml:"link"`
-	PubDate     PubDate `xml:"pubDate"`
-	Description string  `xml:"description"`
+	Title       string     `xml:"title"`
+	Link        string     `xml:"link"`
+	PubDate     PubDate    `xml:"pubDate"`
+	Description string     `xml:"description"`
+	Guid        string     `xml:"guid"`
+	Enclosure   *Enclosure `xml:"enclosure"` // used for attaching media
+}
+
+// RSS 2.0 only
+type Enclosure struct {
+	Url    string `xml:"url,attr"`
+	Length int    `xml:"length,attr"`
+	Type   string `xml:"type,attr"`
 }
 
 type PubDate time.Time

@@ -7,15 +7,18 @@ INSERT INTO posts (
 	url,
 	description,
 	published_at,
-	feed_id
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	feed_id,
+	media_id
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING *;
 
 -- name: GetPostsByUser :many
-SELECT p.*
+SELECT p.*, m.url AS media_url, m.length_ AS media_length, m.mimetype AS media_type
 FROM posts p
 	LEFT JOIN feed_follows ff
 		ON p.feed_id = ff.feed_id
+	LEFT JOIN media m
+		ON m.id = p.media_id
 WHERE ff.user_id = $1
 ORDER BY p.published_at DESC
 LIMIT $2;

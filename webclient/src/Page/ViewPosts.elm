@@ -103,22 +103,57 @@ viewPosts posts zone =
 
 viewPost : Resource () Time.Zone -> Post -> Html Msg
 viewPost zone post =
+    let
+        imageBlock =
+            case post.media of
+                Just { url, mimetype } ->
+                    case getMimeRoot (Debug.log "mimetype" mimetype) of
+                        "image" ->
+                            Just <| Card.sixteenToNineMedia [] url
+
+                        _ ->
+                            Nothing
+
+                _ ->
+                    Debug.log "no media" Nothing
+
+        titleBlock =
+            Card.block <|
+                Html.div []
+                    [ Html.h2 [] [ text post.title ]
+                    , Html.i [] [ text <| "Published on: " ++ formatDate zone post.published_at ]
+                    ]
+
+        bodyBlock =
+            Card.block <|
+                Html.div []
+                    [ Html.p [] [ text <| Maybe.withDefault "" post.description ] ]
+
+        blocks =
+            case imageBlock of
+                Just block ->
+                    ( block, [ titleBlock, bodyBlock ] )
+
+                Nothing ->
+                    ( titleBlock, [ bodyBlock ] )
+    in
     Grid.cell []
         [ Card.card (Card.config |> Card.setHref (Just post.url))
-            { blocks =
-                ( Card.block <|
-                    Html.div []
-                        [ Html.h2 [] [ text post.title ]
-                        , Html.i [] [ text <| "Published on: " ++ formatDate zone post.published_at ]
-                        ]
-                , [ Card.block <|
-                        Html.div []
-                            [ Html.p [] [ text <| Maybe.withDefault "" post.description ] ]
-                  ]
-                )
+            { blocks = blocks
             , actions = Nothing
             }
         ]
+
+
+getMimeRoot : String -> String
+getMimeRoot mimetype =
+    case String.split "/" mimetype of
+        root :: _ ->
+            root
+
+        -- unreachable
+        _ ->
+            ""
 
 
 formatDate : Resource () Time.Zone -> Time.Posix -> String
