@@ -23,10 +23,11 @@ INSERT INTO posts (
     description,
     published_at,
     feed_id,
+	guid,
     media_id,
     source_url,
     source_name
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 RETURNING id, created_at, updated_at, title, url, description, published_at, feed_id, guid, media_id, source_url, source_name
 `
 
@@ -39,12 +40,12 @@ type CreatePostParams struct {
 	Description sql.NullString `json:"description"`
 	PublishedAt time.Time      `json:"published_at"`
 	FeedID      uuid.UUID      `json:"feed_id"`
+	Guid        sql.NullString `json:"guid"`
 	MediaID     uuid.NullUUID  `json:"media_id"`
 	SourceUrl   sql.NullString `json:"source_url"`
 	SourceName  sql.NullString `json:"source_name"`
 }
 
-// FIXME: missing guid
 func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, error) {
 	row := q.db.QueryRowContext(ctx, createPost,
 		arg.ID,
@@ -55,6 +56,7 @@ func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, e
 		arg.Description,
 		arg.PublishedAt,
 		arg.FeedID,
+		arg.Guid,
 		arg.MediaID,
 		arg.SourceUrl,
 		arg.SourceName,

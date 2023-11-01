@@ -1,5 +1,4 @@
 -- name: CreatePost :one
--- FIXME: missing guid
 INSERT INTO posts (
     id,
     created_at,
@@ -9,10 +8,11 @@ INSERT INTO posts (
     description,
     published_at,
     feed_id,
+	guid,
     media_id,
     source_url,
     source_name
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 RETURNING *;
 
 -- name: GetPostsByUser :many

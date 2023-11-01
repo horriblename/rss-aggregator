@@ -118,7 +118,11 @@ func (cfg *apiConfig) writeFeedToDB(item Item, feed_id uuid.UUID) {
 		Description: sql.NullString{String: item.Description, Valid: true},
 		PublishedAt: time.Time(item.PubDate),
 		FeedID:      feed_id,
-		MediaID:     media_id,
+		Guid: sql.NullString{
+			String: item.Guid,
+			Valid:  item.Guid != "",
+		},
+		MediaID: media_id,
 		SourceUrl: sql.NullString{
 			String: item.Source.Url,
 			Valid:  item.Source.Url != "",
