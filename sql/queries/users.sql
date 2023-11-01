@@ -6,5 +6,5 @@ RETURNING *;
 -- name: GetUser :one
 SELECT *
 FROM users
-WHERE apiKey = $1
+WHERE apikey = $1
 LIMIT 1;

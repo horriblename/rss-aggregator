@@ -1,8 +1,8 @@
 -- +goose Up
 ALTER TABLE users
-ADD COLUMN apiKey VARCHAR(64) NOT NULL
-	DEFAULT encode(sha256(random()::text::bytea), 'hex');
+ADD COLUMN apikey VARCHAR(64) NOT NULL
+DEFAULT encode(sha256(random()::TEXT::BYTEA), 'hex');
 
 -- +goose Down
 ALTER TABLE users
-DROP COLUMN apiKey
+DROP COLUMN apikey

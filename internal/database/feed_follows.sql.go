@@ -47,8 +47,8 @@ func (q *Queries) CreateFeedFollow(ctx context.Context, arg CreateFeedFollowPara
 
 const deleteFeedFollow = `-- name: DeleteFeedFollow :one
 DELETE FROM feed_follows
-	WHERE id = $1
-	RETURNING id, user_id, feed_id, created_at, updated_at
+WHERE id = $1
+RETURNING id, user_id, feed_id, created_at, updated_at
 `
 
 func (q *Queries) DeleteFeedFollow(ctx context.Context, id uuid.UUID) (FeedFollow, error) {

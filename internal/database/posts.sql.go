@@ -15,17 +15,17 @@ import (
 
 const createPost = `-- name: CreatePost :one
 INSERT INTO posts (
-	id,
-	created_at,
-	updated_at,
-	title,
-	url,
-	description,
-	published_at,
-	feed_id,
-	media_id,
-	source_url,
-	source_name
+    id,
+    created_at,
+    updated_at,
+    title,
+    url,
+    description,
+    published_at,
+    feed_id,
+    media_id,
+    source_url,
+    source_name
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING id, created_at, updated_at, title, url, description, published_at, feed_id, guid, media_id, source_url, source_name
 `
@@ -44,6 +44,7 @@ type CreatePostParams struct {
 	SourceName  sql.NullString `json:"source_name"`
 }
 
+// FIXME: missing guid
 func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, error) {
 	row := q.db.QueryRowContext(ctx, createPost,
 		arg.ID,

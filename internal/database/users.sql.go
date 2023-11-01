@@ -46,7 +46,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 const getUser = `-- name: GetUser :one
 SELECT id, created_at, updated_at, name, apikey
 FROM users
-WHERE apiKey = $1
+WHERE apikey = $1
 LIMIT 1
 `
 

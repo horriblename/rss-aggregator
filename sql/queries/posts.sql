@@ -1,16 +1,17 @@
 -- name: CreatePost :one
+-- FIXME: missing guid
 INSERT INTO posts (
-	id,
-	created_at,
-	updated_at,
-	title,
-	url,
-	description,
-	published_at,
-	feed_id,
-	media_id,
-	source_url,
-	source_name
+    id,
+    created_at,
+    updated_at,
+    title,
+    url,
+    description,
+    published_at,
+    feed_id,
+    media_id,
+    source_url,
+    source_name
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING *;
 
