@@ -459,6 +459,7 @@ func (cfg *apiConfig) scrapeFeed(url string, feed_id uuid.UUID, last_fetched *ti
 		for i, item := range items {
 			if time.Time(item.PubDate).Compare(*last_fetched) <= 0 {
 				end = i
+				break
 			}
 		}
 		items = items[:end]
