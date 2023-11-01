@@ -24,6 +24,7 @@ const testcase = `
       
       <guid>https://blog.boot.dev/python/queue-data-structure-python/</guid>
       <description>Description One</description>
+		<enclosure url="http://www.scripting.com/mp3s/file.mp3" length="12216320" type="audio/mpeg" />
     </item>
     
     <item>
@@ -65,12 +66,19 @@ func TestParseRSS(t *testing.T) {
 					Link:        "https://blog.boot.dev/blog1",
 					PubDate:     PubDate(date1),
 					Description: "Description One",
+					Guid:        "https://blog.boot.dev/python/queue-data-structure-python/",
+					Enclosure: &Enclosure{
+						Url:    "http://www.scripting.com/mp3s/file.mp3",
+						Length: 12216320,
+						Type:   "audio/mpeg",
+					},
 				},
 				{
 					Title:       "Title 2",
 					Link:        "https://blog.boot.dev/blog2",
 					PubDate:     PubDate(date2),
 					Description: "Description Two",
+					Guid:        "https://blog.boot.dev/golang/can-go-used-web-development/",
 				},
 			},
 		},
