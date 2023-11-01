@@ -47,6 +47,8 @@ type Post struct {
 	FeedID      uuid.UUID      `json:"feed_id"`
 	Guid        sql.NullString `json:"guid"`
 	MediaID     uuid.NullUUID  `json:"media_id"`
+	SourceUrl   sql.NullString `json:"source_url"`
+	SourceName  sql.NullString `json:"source_name"`
 }
 
 type User struct {

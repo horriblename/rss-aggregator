@@ -23,9 +23,11 @@ INSERT INTO posts (
 	description,
 	published_at,
 	feed_id,
-	media_id
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, created_at, updated_at, title, url, description, published_at, feed_id, guid, media_id
+	media_id,
+	source_url,
+	source_name
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+RETURNING id, created_at, updated_at, title, url, description, published_at, feed_id, guid, media_id, source_url, source_name
 `
 
 type CreatePostParams struct {
@@ -38,6 +40,8 @@ type CreatePostParams struct {
 	PublishedAt time.Time      `json:"published_at"`
 	FeedID      uuid.UUID      `json:"feed_id"`
 	MediaID     uuid.NullUUID  `json:"media_id"`
+	SourceUrl   sql.NullString `json:"source_url"`
+	SourceName  sql.NullString `json:"source_name"`
 }
 
 func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, error) {
@@ -51,6 +55,8 @@ func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, e
 		arg.PublishedAt,
 		arg.FeedID,
 		arg.MediaID,
+		arg.SourceUrl,
+		arg.SourceName,
 	)
 	var i Post
 	err := row.Scan(
@@ -64,12 +70,14 @@ func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, e
 		&i.FeedID,
 		&i.Guid,
 		&i.MediaID,
+		&i.SourceUrl,
+		&i.SourceName,
 	)
 	return i, err
 }
 
 const getPostsByUser = `-- name: GetPostsByUser :many
-SELECT p.id, p.created_at, p.updated_at, p.title, p.url, p.description, p.published_at, p.feed_id, p.guid, p.media_id, m.url AS media_url, m.length_ AS media_length, m.mimetype AS media_type
+SELECT p.id, p.created_at, p.updated_at, p.title, p.url, p.description, p.published_at, p.feed_id, p.guid, p.media_id, p.source_url, p.source_name, m.url AS media_url, m.length_ AS media_length, m.mimetype AS media_type
 FROM posts p
 	LEFT JOIN feed_follows ff
 		ON p.feed_id = ff.feed_id
@@ -96,6 +104,8 @@ type GetPostsByUserRow struct {
 	FeedID      uuid.UUID      `json:"feed_id"`
 	Guid        sql.NullString `json:"guid"`
 	MediaID     uuid.NullUUID  `json:"media_id"`
+	SourceUrl   sql.NullString `json:"source_url"`
+	SourceName  sql.NullString `json:"source_name"`
 	MediaUrl    sql.NullString `json:"media_url"`
 	MediaLength sql.NullInt32  `json:"media_length"`
 	MediaType   sql.NullString `json:"media_type"`
@@ -121,6 +131,8 @@ func (q *Queries) GetPostsByUser(ctx context.Context, arg GetPostsByUserParams) 
 			&i.FeedID,
 			&i.Guid,
 			&i.MediaID,
+			&i.SourceUrl,
+			&i.SourceName,
 			&i.MediaUrl,
 			&i.MediaLength,
 			&i.MediaType,

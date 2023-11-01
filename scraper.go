@@ -119,6 +119,14 @@ func (cfg *apiConfig) writeFeedToDB(item Item, feed_id uuid.UUID) {
 		PublishedAt: time.Time(item.PubDate),
 		FeedID:      feed_id,
 		MediaID:     media_id,
+		SourceUrl: sql.NullString{
+			String: item.Source.Url,
+			Valid:  item.Source.Url != "",
+		},
+		SourceName: sql.NullString{
+			String: item.Source.Name,
+			Valid:  item.Source.Name != "",
+		},
 	}); err != nil {
 		log.Printf("db create post: %s", err)
 		return
