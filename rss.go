@@ -35,8 +35,8 @@ type Enclosure struct {
 }
 
 type Source struct {
-	Url  string `xml:"url,attr"`
-	Name string `xml:",innerxml"`
+	Url  string `xml:"url,attr" json:"url"`
+	Name string `xml:",innerxml" json:"name"`
 }
 
 type PubDate time.Time
