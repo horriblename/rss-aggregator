@@ -53,6 +53,18 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
+    let
+        disableButton =
+            case model.submitStatus of
+                Just Loading ->
+                    True
+
+                Just (Loaded _) ->
+                    True
+
+                _ ->
+                    False
+    in
     Html.form [ onSubmit Submit, class "mdc-layout-grid", Typography.typography ]
         [ viewError model.submitStatus
         , div []
@@ -67,17 +79,7 @@ view model =
             [ Button.raised
                 (Button.config
                     |> Button.setAttributes [ type_ "submit" ]
-                    |> Button.setDisabled
-                        (case model.submitStatus of
-                            Just Loading ->
-                                True
-
-                            Just (Loaded _) ->
-                                True
-
-                            _ ->
-                                False
-                        )
+                    |> Button.setDisabled disableButton
                 )
                 "Submit"
             ]
