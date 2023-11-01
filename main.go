@@ -466,9 +466,6 @@ func (cfg *apiConfig) scrapeFeed(url string, feed_id uuid.UUID, last_fetched *ti
 	}
 
 	for _, item := range items {
-		if len(item.Description) > 511 {
-			item.Description = item.Description[:512]
-		}
 		if _, err := cfg.queries.CreatePost(cfg.ctx, database.CreatePostParams{
 			ID:          uuid.New(),
 			CreatedAt:   time.Now(),
