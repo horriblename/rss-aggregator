@@ -466,19 +466,7 @@ func (cfg *apiConfig) scrapeFeed(url string, feed_id uuid.UUID, last_fetched *ti
 	}
 
 	for _, item := range items {
-		if _, err := cfg.queries.CreatePost(cfg.ctx, database.CreatePostParams{
-			ID:          uuid.New(),
-			CreatedAt:   time.Now(),
-			UpdatedAt:   time.Now(),
-			Title:       item.Title,
-			Url:         item.Link,
-			Description: sql.NullString{String: item.Description, Valid: true},
-			PublishedAt: time.Time(item.PubDate),
-			FeedID:      feed_id,
-		}); err != nil {
-			log.Printf("db create post: %s", err)
-			return
-		}
+		cfg.writeFeedToDB(item, feed_id)
 	}
 
 	if err := cfg.queries.MarkFeedFetched(cfg.ctx, database.MarkFeedFetchedParams{
@@ -486,5 +474,54 @@ func (cfg *apiConfig) scrapeFeed(url string, feed_id uuid.UUID, last_fetched *ti
 		FeedID:    feed_id,
 	}); err != nil {
 		log.Printf("db mark feed fetched: %s", err)
+	}
+}
+
+func (cfg *apiConfig) writeFeedToDB(item Item, feed_id uuid.UUID) {
+	media_id := uuid.NullUUID{}
+
+	tx, err := cfg.db.Begin()
+	if err != nil {
+		log.Printf("db begin transaction: %s", err)
+		return
+	}
+	defer tx.Rollback()
+
+	qtx := cfg.queries.WithTx(tx)
+
+	if item.Enclosure != nil {
+		media_id.UUID = uuid.New()
+		media_id.Valid = true
+
+		if _, err := qtx.CreateMedia(cfg.ctx, database.CreateMediaParams{
+			ID:       media_id.UUID,
+			Url:      item.Enclosure.Url,
+			Length:   int32(item.Enclosure.Length),
+			Mimetype: item.Enclosure.Type,
+		}); err != nil {
+			log.Printf("db create media: %s", err)
+			return
+		}
+	}
+
+	if _, err := qtx.CreatePost(cfg.ctx, database.CreatePostParams{
+		ID:          uuid.New(),
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+		Title:       item.Title,
+		Url:         item.Link,
+		Description: sql.NullString{String: item.Description, Valid: true},
+		PublishedAt: time.Time(item.PubDate),
+		FeedID:      feed_id,
+		MediaID:     media_id,
+	}); err != nil {
+		log.Printf("db create post: %s", err)
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Printf("db commiting transaction: %s", err)
+		return
 	}
 }
