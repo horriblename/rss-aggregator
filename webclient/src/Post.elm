@@ -6,7 +6,7 @@ module Post exposing (Post, fetchPosts)
 import Http exposing (header)
 import Iso8601
 import Json.Decode as Decode exposing (Decoder, andThen, list, map, maybe, string)
-import Json.Decode.Pipeline exposing (required)
+import Json.Decode.Pipeline exposing (optional, required)
 import Route exposing (apiBaseUrl)
 import Time
 
@@ -20,7 +20,21 @@ type alias Post =
     , description : Maybe String
     , published_at : Time.Posix
     , feed_id : String
+    , media : Maybe Media
     }
+
+
+type alias Media =
+    { url : String
+    , mimetype : String
+    }
+
+
+mediaDecoder : Decoder Media
+mediaDecoder =
+    Decode.succeed Media
+        |> required "url" string
+        |> required "mimetype" string
 
 
 postDecoder : Decoder Post
@@ -31,9 +45,10 @@ postDecoder =
         |> required "updated_at" (andThen (\_ -> Iso8601.decoder) string)
         |> required "title" string
         |> required "url" string
-        |> required "description" (maybe string)
+        |> optional "description" (maybe string) Nothing
         |> required "published_at" (andThen (\_ -> Iso8601.decoder) string)
         |> required "feed_id" string
+        |> optional "media" (maybe mediaDecoder) Nothing
 
 
 fetchPosts : String -> (Result Http.Error (List Post) -> msg) -> Cmd msg
