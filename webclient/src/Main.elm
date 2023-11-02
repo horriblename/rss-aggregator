@@ -243,7 +243,7 @@ view model =
         [ Html.div (typography :: drawerFrameRoot)
             [ Html.map DrawerMsg <| Drawer.view model.drawer
             , Drawer.scrim
-            , Html.div [ typography ]
+            , Html.div [ style "width" "100%" ]
                 [ viewTopBar model.drawer.open
                 , Html.div [ TopAppBar.fixedAdjust ] [ currentView model ]
                 ]
