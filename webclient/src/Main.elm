@@ -271,7 +271,10 @@ viewTopBar drawerIsOpen =
                             )
                     )
                     (IconButton.icon "menu")
-                , span [ TopAppBar.title ] [ text "RSS Aggregator" ]
+                , span [ TopAppBar.title ]
+                    [ Icon.icon [] "rss_feed"
+                    , span [] [ text " RSS Aggregator" ]
+                    ]
                 ]
             ]
         ]
