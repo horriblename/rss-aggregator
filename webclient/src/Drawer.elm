@@ -1,9 +1,11 @@
 module Drawer exposing (Model, Msg(..), initialModel, scrim, update, view)
 
 import Html exposing (Html)
+import Html.Attributes exposing (style)
 import Material.Button as Button
 import Material.Drawer.Modal as ModalDrawer
 import Material.Icon as Icon
+import Material.IconButton as IconButton
 import Material.List as List
 import Material.List.Item as ListItem
 
@@ -59,8 +61,15 @@ view model =
         (ModalDrawer.config
             |> ModalDrawer.setOpen model.open
             |> ModalDrawer.setOnClose CloseDrawer
+            |> ModalDrawer.setAttributes [ style "padding-top" "0.5rem" ]
         )
-        [ List.list
+        [ IconButton.iconButton
+            (IconButton.config
+                |> IconButton.setOnClick CloseDrawer
+                |> IconButton.setAttributes [ style "padding-left" "1rem" ]
+            )
+            (IconButton.icon "arrow_back")
+        , List.list
             List.config
             (listItem "home" "Home" "/")
             [ listItem "feed" "Feeds" "/feeds" ]

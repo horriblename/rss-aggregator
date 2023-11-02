@@ -7,6 +7,7 @@ import Browser.Navigation as Nav
 import Drawer
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Material.Icon as Icon
 import Material.IconButton as IconButton
 import Material.TopAppBar as TopAppBar
 import Material.Typography exposing (typography)
