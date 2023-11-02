@@ -3,7 +3,11 @@ module Page.ViewFeeds exposing (Model, Msg, init, update, view)
 import Common exposing (Resource(..))
 import Feed exposing (Feed, fetchFeeds)
 import Html exposing (..)
+import Html.Attributes exposing (style)
 import Http exposing (Error(..))
+import Material.IconButton as IconButton
+import Material.List as List_
+import Material.List.Item as ListItem
 import Url exposing (Protocol(..))
 
 
@@ -71,15 +75,21 @@ viewFailed err =
 
 viewFeeds : List Feed -> Html Msg
 viewFeeds feeds =
-    if List.length feeds == 0 then
-        text "You have no Feeds"
+    case List.map viewFeed feeds of
+        [] ->
+            text "No Feeds Found"
 
-    else
-        table [] <| List.map viewFeed feeds
+        head :: rest ->
+            List_.list
+                (List_.config |> List_.setAttributes [])
+                head
+                rest
 
 
-viewFeed : Feed -> Html Msg
+viewFeed : Feed -> ListItem.ListItem Msg
 viewFeed feed =
-    tr []
-        [ td [] [ text feed.url ]
+    ListItem.listItem ListItem.config
+        [ span [] [ text feed.url ]
+        , span [ style "margin-left" "auto" ]
+            [ IconButton.iconButton IconButton.config (IconButton.icon "add") ]
         ]
