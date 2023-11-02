@@ -2,7 +2,7 @@ module Page.ViewPosts exposing (Model, Msg, init, update, view)
 
 import Common exposing (Resource(..))
 import Html exposing (..)
-import Html.Attributes exposing (href)
+import Html.Attributes exposing (href, style)
 import Http exposing (Error(..))
 import Json.Decode as Decode
 import Material.Card as Card
@@ -121,7 +121,12 @@ viewPost zone post =
             Card.block <|
                 Html.div []
                     [ Html.h2 [] [ text post.title ]
-                    , Html.i [] [ text <| "Published on: " ++ formatDate zone post.published_at ]
+                    , Html.p [ style "overflow" "fade", style "white-space" "nowrap" ]
+                        [ Html.i []
+                            [ span [] [ text <| formatDate zone post.published_at ]
+                            , span [] [ text <| " | by " ++ post.source.name ]
+                            ]
+                        ]
                     ]
 
         bodyBlock =
