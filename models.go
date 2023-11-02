@@ -9,8 +9,6 @@ import (
 
 type Post struct {
 	ID          uuid.UUID  `json:"id"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
 	Title       string     `json:"title"`
 	Url         string     `json:"url"`
 	Description string     `json:"description,omitempty"`
@@ -18,7 +16,7 @@ type Post struct {
 	FeedID      uuid.UUID  `json:"feed_id"`
 	Guid        string     `json:"guid,omitempty"`
 	Media       *Enclosure `json:"media,omitempty"` // used for attaching media
-	Source      *Source    `json:"source,omitempty"`
+	Source      Source     `json:"source"`
 }
 
 func PostFromDB(post *database.GetPostsByUserRow) Post {
@@ -40,9 +38,6 @@ func PostFromDB(post *database.GetPostsByUserRow) Post {
 		FeedID:      post.FeedID,
 		Guid:        post.Guid.String,
 		Media:       media,
-		Source: &Source{
-			Url:  post.SourceUrl,
-			Name: post.SourceName,
-		},
+		Source:      Source{Url: post.SourceUrl, Name: post.SourceName},
 	}
 }
