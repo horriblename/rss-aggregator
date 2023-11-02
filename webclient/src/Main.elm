@@ -226,7 +226,7 @@ processSignal model signal =
             ( { model | apiKey = Just apiKey }, Cmd.batch [ storeApiKey apiKey, Nav.pushUrl model.navKey "/" ] )
 
         NewFeedPageSignal (Just CreatedFeed) ->
-            ( model, Cmd.none )
+            ( model, Nav.pushUrl model.navKey "/" )
 
         _ ->
             ( model, Cmd.none )
