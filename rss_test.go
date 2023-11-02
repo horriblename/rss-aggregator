@@ -25,6 +25,7 @@ const testcase = `
       <guid>https://blog.boot.dev/python/queue-data-structure-python/</guid>
       <description>Description One</description>
 		<enclosure url="http://www.scripting.com/mp3s/file.mp3" length="12216320" type="audio/mpeg" />
+		<source url="https://blog.boot.dev/">Boot.dev Blog</source>
     </item>
     
     <item>
@@ -71,6 +72,10 @@ func TestParseRSS(t *testing.T) {
 						Url:    "http://www.scripting.com/mp3s/file.mp3",
 						Length: 12216320,
 						Type:   "audio/mpeg",
+					},
+					Source: &Source{
+						Url:  "https://blog.boot.dev/",
+						Name: "Boot.dev Blog",
 					},
 				},
 				{

@@ -24,14 +24,19 @@ type Item struct {
 	PubDate     PubDate    `xml:"pubDate"`
 	Description string     `xml:"description"`
 	Guid        string     `xml:"guid"`
-	Enclosure   *Enclosure `xml:"enclosure"` // used for attaching media
+	Enclosure   *Enclosure `xml:"enclosure,omitempty"` // used for attaching media
+	Source      *Source    `xml:"source,omitempty"`
 }
 
-// RSS 2.0 only
 type Enclosure struct {
 	Url    string `xml:"url,attr"`
 	Length int    `xml:"length,attr"`
 	Type   string `xml:"type,attr"`
+}
+
+type Source struct {
+	Url  string `xml:"url,attr" json:"url"`
+	Name string `xml:",innerxml" json:"name"`
 }
 
 type PubDate time.Time
