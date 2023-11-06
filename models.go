@@ -41,3 +41,19 @@ func PostFromDB(post *database.GetPostsByUserRow) Post {
 		Source:      Source{Url: post.SourceUrl, Name: post.SourceName},
 	}
 }
+
+type FeedWithFollows struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	Url       string    `json:"url"`
+	Following bool      `json:"following,omitempty"`
+}
+
+func FeedWithFollowsFromDB(feeds *database.GetFeedsWithFollowsRow) FeedWithFollows {
+	return FeedWithFollows{
+		ID:        feeds.ID,
+		Name:      feeds.Name,
+		Url:       feeds.Url,
+		Following: feeds.Following.Valid && feeds.Following.Bool,
+	}
+}

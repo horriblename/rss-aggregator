@@ -273,6 +273,19 @@ func (cfg *apiConfig) postFeeds(w http.ResponseWriter, r *http.Request, user dat
 }
 
 func (cfg *apiConfig) getFeeds(w http.ResponseWriter, r *http.Request) {
+	type queryParams struct {
+		includeFollow bool
+	}
+
+	params := queryParams{
+		includeFollow: r.URL.Query().Get("follows") == "1",
+	}
+
+	if params.includeFollow {
+		cfg.middlewareAuth(cfg.getFeedsWithFollows)(w, r)
+		return
+	}
+
 	feeds, err := cfg.queries.GetFeeds(cfg.ctx)
 	if err != nil {
 		log.Printf("db get feeds: %s", err)
@@ -284,6 +297,21 @@ func (cfg *apiConfig) getFeeds(w http.ResponseWriter, r *http.Request) {
 		feeds = make([]database.Feed, 0)
 	}
 	respondWithJSON(w, http.StatusOK, feeds)
+}
+
+func (cfg *apiConfig) getFeedsWithFollows(w http.ResponseWriter, r *http.Request, user database.User) {
+	feeds, err := cfg.queries.GetFeedsWithFollows(cfg.ctx, user.ID)
+	if err != nil {
+		log.Printf("db get feeds: %s", err)
+		respondWithError(w, http.StatusInternalServerError, "DB error")
+		return
+	}
+
+	feedsJSON := make([]FeedWithFollows, 0, len(feeds))
+	for _, feed := range feeds {
+		feedsJSON = append(feedsJSON, FeedWithFollowsFromDB(&feed))
+	}
+	respondWithJSON(w, http.StatusOK, feedsJSON)
 }
 
 func (cfg *apiConfig) postFeedFollow(w http.ResponseWriter, r *http.Request, user database.User) {
@@ -349,7 +377,7 @@ func (cfg *apiConfig) getFeedFollows(w http.ResponseWriter, r *http.Request, use
 	}
 
 	if ffs == nil {
-		respondWithJSON(w, http.StatusOK, make([]int, 0))
+		respondWithJSON(w, http.StatusOK, make([]database.FeedFollow, 0))
 		return
 	}
 	respondWithJSON(w, http.StatusOK, ffs)
