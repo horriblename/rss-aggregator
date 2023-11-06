@@ -109,6 +109,15 @@ func (cfg *apiConfig) writeFeedToDB(item Item, feed_id uuid.UUID) {
 		}
 	}
 
+	sourceUrl := sql.NullString{}
+	sourceName := sql.NullString{}
+	if item.Source != nil {
+		sourceUrl.String = item.Source.Url
+		sourceUrl.Valid = true
+		sourceName.String = item.Source.Name
+		sourceName.Valid = true
+	}
+
 	if _, err := qtx.CreatePost(cfg.ctx, database.CreatePostParams{
 		ID:          uuid.New(),
 		CreatedAt:   time.Now(),
@@ -122,15 +131,9 @@ func (cfg *apiConfig) writeFeedToDB(item Item, feed_id uuid.UUID) {
 			String: item.Guid,
 			Valid:  item.Guid != "",
 		},
-		MediaID: media_id,
-		SourceUrl: sql.NullString{
-			String: item.Source.Url,
-			Valid:  item.Source.Url != "",
-		},
-		SourceName: sql.NullString{
-			String: item.Source.Name,
-			Valid:  item.Source.Name != "",
-		},
+		MediaID:    media_id,
+		SourceUrl:  sourceUrl,
+		SourceName: sourceName,
 	}); err != nil {
 		log.Printf("db create post: %s", err)
 		return

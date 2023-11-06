@@ -7,6 +7,7 @@ import Browser.Navigation as Nav
 import Drawer
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html.Lazy as Lazy
 import Material.Icon as Icon
 import Material.IconButton as IconButton
 import Material.TopAppBar as TopAppBar
@@ -240,11 +241,12 @@ view : Model -> Document Msg
 view model =
     { title = "RSS Aggregator"
     , body =
-        [ Html.div (typography :: drawerFrameRoot)
-            [ Html.map DrawerMsg <| Drawer.view model.drawer
+        [ Lazy.lazy2 Html.div
+            (typography :: drawerFrameRoot)
+            [ Html.map DrawerMsg <| Lazy.lazy Drawer.view model.drawer
             , Drawer.scrim
             , Html.div [ style "width" "100%" ]
-                [ viewTopBar model.drawer.open
+                [ Lazy.lazy viewTopBar model.drawer.open
                 , Html.div [ TopAppBar.fixedAdjust ] [ currentView model ]
                 ]
             ]
@@ -295,19 +297,19 @@ currentView model =
             notFoundView
 
         LoginPage pageModel ->
-            LoginPage.view pageModel
+            Lazy.lazy LoginPage.view pageModel
                 |> Html.map LoginPageMsg
 
         FeedsPage pageModel ->
-            FeedsPage.view pageModel
+            Lazy.lazy FeedsPage.view pageModel
                 |> Html.map FeedsPageMsg
 
         PostsPage pageModel ->
-            PostsPage.view pageModel
+            Lazy.lazy PostsPage.view pageModel
                 |> Html.map PostsPageMsg
 
         NewFeedPage pageModel ->
-            NewFeedPage.view pageModel
+            Lazy.lazy NewFeedPage.view pageModel
                 |> Html.map NewFeedPageMsg
 
 
