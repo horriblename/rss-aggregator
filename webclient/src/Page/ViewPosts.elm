@@ -2,9 +2,10 @@ module Page.ViewPosts exposing (Model, Msg, init, update, view)
 
 import Common exposing (Resource(..))
 import Html exposing (..)
-import Html.Attributes exposing (href, style)
+import Html.Attributes exposing (style)
+import Html.Parser exposing (Node(..))
+import Html.Parser.Util
 import Http exposing (Error(..))
-import Json.Decode as Decode
 import Material.Card as Card
 import Material.LayoutGrid as Grid
 import Post exposing (Post, fetchPosts)
@@ -129,10 +130,18 @@ viewPost zone post =
                         ]
                     ]
 
+        bodyHtml =
+            case Html.Parser.run (Maybe.withDefault "" post.description) of
+                Ok nodes ->
+                    Html.Parser.Util.toVirtualDom <| sanitizeDescription nodes
+
+                Err _ ->
+                    [ text <| Maybe.withDefault "" post.description ]
+
         bodyBlock =
             Card.block <|
                 Html.div []
-                    [ Html.p [] [ text <| Maybe.withDefault "" post.description ] ]
+                    [ Html.p [] bodyHtml ]
 
         blocks =
             case imageBlock of
@@ -159,6 +168,27 @@ getMimeRoot mimetype =
         -- unreachable
         _ ->
             ""
+
+
+sanitizeDescription : List Html.Parser.Node -> List Html.Parser.Node
+sanitizeDescription nodes =
+    List.filterMap
+        (\node ->
+            case node of
+                Element "script" _ _ ->
+                    Nothing
+
+                -- html-parser does not support svg, but, just in case
+                Element "svg" _ _ ->
+                    Nothing
+
+                Element tag attr children ->
+                    Just <| Element tag attr (sanitizeDescription children)
+
+                a ->
+                    Just a
+        )
+        nodes
 
 
 formatDate : Resource () Time.Zone -> Time.Posix -> String
