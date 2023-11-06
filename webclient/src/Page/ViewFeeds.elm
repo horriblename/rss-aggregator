@@ -110,10 +110,12 @@ update msg model =
                     ( model, Cmd.none )
 
         FollowResult (Err a) ->
-            Debug.todo ""
+            -- TODO: proper error handling
+            ( model, Cmd.none )
 
         UnfollowResult (Err e) ->
-            Debug.todo ""
+            -- TODO: proper error handling
+            ( model, Cmd.none )
 
 
 view : Model -> Html Msg
