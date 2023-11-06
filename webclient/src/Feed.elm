@@ -1,7 +1,7 @@
-module Feed exposing (Feed, FeedFollow, UUID, createFeed, fetchFeeds, fetchFollows, followFeed)
+module Feed exposing (Feed, FeedFollow, UUID, createFeed, fetchFeeds, fetchFollows, followFeed, unfollowFeed)
 
 import Http exposing (header)
-import Json.Decode as Decode exposing (Decoder, bool, list, string)
+import Json.Decode as Decode exposing (Decoder, list, string)
 import Json.Decode.Pipeline exposing (optional, required)
 import Json.Encode as Encode
 import Route exposing (apiBaseUrl)
@@ -11,7 +11,7 @@ type alias Feed =
     { id : String
     , name : String
     , url : String
-    , following : Bool
+    , followID : Maybe UUID
     }
 
 
@@ -21,7 +21,7 @@ feedDecoder =
         |> required "id" string
         |> required "name" string
         |> required "url" string
-        |> optional "following" bool False
+        |> optional "follow_id" (Decode.maybe string) Nothing
 
 
 fetchFeeds : String -> (Result Http.Error (List Feed) -> msg) -> Cmd msg
@@ -121,6 +121,19 @@ followFeed apiKey feedID toMsg =
         , url = apiBaseUrl ++ "/v1/feed_follows"
         , body = Http.jsonBody params
         , expect = Http.expectJson toMsg decodeFeedFollow
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+unfollowFeed : String -> String -> (Result Http.Error () -> msg) -> Cmd msg
+unfollowFeed apiKey followID toMsg =
+    Http.request
+        { method = "DELETE"
+        , headers = [ header "Authorization" <| "ApiKey " ++ apiKey ]
+        , url = apiBaseUrl ++ "/v1/feed_follows/" ++ followID
+        , body = Http.emptyBody
+        , expect = Http.expectWhatever toMsg
         , timeout = Nothing
         , tracker = Nothing
         }

@@ -2,7 +2,7 @@ module Page.ViewFeeds exposing (Model, Msg, init, update, view)
 
 import Common exposing (Resource(..), errorBox)
 import Dict exposing (Dict)
-import Feed exposing (Feed, UUID, fetchFeeds, followFeed)
+import Feed exposing (Feed, UUID, fetchFeeds, followFeed, unfollowFeed)
 import Html exposing (..)
 import Html.Attributes exposing (style)
 import Html.Keyed as Keyed
@@ -27,8 +27,9 @@ type alias Model =
 type Msg
     = GotFeeds (Result Http.Error (List Feed))
     | FollowFeed { feedID : String }
-      -- | UnfollowFeed { feedID : String }
+    | UnfollowFeed { feedID : String, followID : String }
     | FollowResult (Result Http.Error Feed.FeedFollow)
+    | UnfollowResult (Result Http.Error { feedID : UUID })
 
 
 init : String -> ( Model, Cmd Msg )
@@ -71,6 +72,13 @@ update msg model =
         FollowFeed { feedID } ->
             ( model, followFeed model.apiKey feedID FollowResult )
 
+        UnfollowFeed { feedID, followID } ->
+            ( model
+            , unfollowFeed model.apiKey
+                followID
+                (\res -> UnfollowResult (Result.map (\_ -> { feedID = feedID }) res))
+            )
+
         -- UnfollowFeed { feedID } ->
         --     (model, follow)
         FollowResult (Ok follow) ->
@@ -79,14 +87,21 @@ update msg model =
                     let
                         updatedFeeds =
                             Dict.update follow.feedID
-                                (\feed ->
-                                    case feed of
-                                        Just f ->
-                                            Just { f | following = True }
+                                (Maybe.map (\f -> { f | followID = Just follow.id }))
+                                feeds
+                    in
+                    ( { model | feeds = Loaded <| updatedFeeds }, Cmd.none )
 
-                                        _ ->
-                                            Nothing
-                                )
+                _ ->
+                    ( model, Cmd.none )
+
+        UnfollowResult (Ok { feedID }) ->
+            case model.feeds of
+                Loaded feeds ->
+                    let
+                        updatedFeeds =
+                            Dict.update feedID
+                                (Maybe.map (\f -> { f | followID = Nothing }))
                                 feeds
                     in
                     ( { model | feeds = Loaded <| updatedFeeds }, Cmd.none )
@@ -95,6 +110,9 @@ update msg model =
                     ( model, Cmd.none )
 
         FollowResult (Err a) ->
+            Debug.todo ""
+
+        UnfollowResult (Err e) ->
             Debug.todo ""
 
 
@@ -155,11 +173,12 @@ viewFollowButton : Feed -> Html Msg
 viewFollowButton feed =
     let
         ( icon, onClick ) =
-            if feed.following then
-                ( "close", FollowFeed { feedID = feed.id } )
+            case Debug.log "follow id?" feed.followID of
+                Nothing ->
+                    ( "add", FollowFeed { feedID = feed.id } )
 
-            else
-                ( "add", FollowFeed { feedID = feed.id } )
+                Just followID ->
+                    ( "close", UnfollowFeed { feedID = feed.id, followID = followID } )
     in
     IconButton.iconButton
         (IconButton.config
