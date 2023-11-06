@@ -85,6 +85,56 @@ func (q *Queries) GetFeeds(ctx context.Context) ([]Feed, error) {
 	return items, nil
 }
 
+const getFeedsWithFollows = `-- name: GetFeedsWithFollows :many
+SELECT f.id, f.created_at, f.updated_at, f.name, f.url, f.user_id, f.last_fetched_at, (NOT ff.id IS NULL) as following
+FROM feeds f
+LEFT JOIN feed_follows ff
+	ON f.id = ff.feed_id AND ff.user_id = $1
+`
+
+type GetFeedsWithFollowsRow struct {
+	ID            uuid.UUID    `json:"id"`
+	CreatedAt     time.Time    `json:"created_at"`
+	UpdatedAt     time.Time    `json:"updated_at"`
+	Name          string       `json:"name"`
+	Url           string       `json:"url"`
+	UserID        uuid.UUID    `json:"user_id"`
+	LastFetchedAt sql.NullTime `json:"last_fetched_at"`
+	Following     sql.NullBool `json:"following"`
+}
+
+func (q *Queries) GetFeedsWithFollows(ctx context.Context, userID uuid.UUID) ([]GetFeedsWithFollowsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getFeedsWithFollows, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetFeedsWithFollowsRow
+	for rows.Next() {
+		var i GetFeedsWithFollowsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Name,
+			&i.Url,
+			&i.UserID,
+			&i.LastFetchedAt,
+			&i.Following,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getNextFeedsToFetch = `-- name: GetNextFeedsToFetch :many
 SELECT id, created_at, updated_at, name, url, user_id, last_fetched_at FROM feeds
 ORDER BY last_fetched_at ASC NULLS FIRST
