@@ -7,7 +7,7 @@ RETURNING *;
 SELECT * FROM feeds;
 
 -- name: GetFeedsWithFollows :many
-SELECT f.*, (NOT ff.id IS NULL) as following
+SELECT f.*, ff.id as follow_id
 FROM feeds f
 LEFT JOIN feed_follows ff
 	ON f.id = ff.feed_id AND ff.user_id = $1;

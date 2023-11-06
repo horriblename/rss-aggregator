@@ -86,21 +86,21 @@ func (q *Queries) GetFeeds(ctx context.Context) ([]Feed, error) {
 }
 
 const getFeedsWithFollows = `-- name: GetFeedsWithFollows :many
-SELECT f.id, f.created_at, f.updated_at, f.name, f.url, f.user_id, f.last_fetched_at, (NOT ff.id IS NULL) as following
+SELECT f.id, f.created_at, f.updated_at, f.name, f.url, f.user_id, f.last_fetched_at, ff.id as follow_id
 FROM feeds f
 LEFT JOIN feed_follows ff
 	ON f.id = ff.feed_id AND ff.user_id = $1
 `
 
 type GetFeedsWithFollowsRow struct {
-	ID            uuid.UUID    `json:"id"`
-	CreatedAt     time.Time    `json:"created_at"`
-	UpdatedAt     time.Time    `json:"updated_at"`
-	Name          string       `json:"name"`
-	Url           string       `json:"url"`
-	UserID        uuid.UUID    `json:"user_id"`
-	LastFetchedAt sql.NullTime `json:"last_fetched_at"`
-	Following     sql.NullBool `json:"following"`
+	ID            uuid.UUID     `json:"id"`
+	CreatedAt     time.Time     `json:"created_at"`
+	UpdatedAt     time.Time     `json:"updated_at"`
+	Name          string        `json:"name"`
+	Url           string        `json:"url"`
+	UserID        uuid.UUID     `json:"user_id"`
+	LastFetchedAt sql.NullTime  `json:"last_fetched_at"`
+	FollowID      uuid.NullUUID `json:"follow_id"`
 }
 
 func (q *Queries) GetFeedsWithFollows(ctx context.Context, userID uuid.UUID) ([]GetFeedsWithFollowsRow, error) {
@@ -120,7 +120,7 @@ func (q *Queries) GetFeedsWithFollows(ctx context.Context, userID uuid.UUID) ([]
 			&i.Url,
 			&i.UserID,
 			&i.LastFetchedAt,
-			&i.Following,
+			&i.FollowID,
 		); err != nil {
 			return nil, err
 		}
