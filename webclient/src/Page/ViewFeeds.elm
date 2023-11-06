@@ -1,6 +1,6 @@
 module Page.ViewFeeds exposing (Model, Msg, init, update, view)
 
-import Common exposing (Resource(..))
+import Common exposing (Resource(..), errorBox)
 import Dict exposing (Dict)
 import Feed exposing (Feed, UUID, fetchFeeds, followFeed)
 import Html exposing (..)
@@ -12,36 +12,30 @@ import Material.DataTable as DataTable
 import Material.IconButton as IconButton
 import Material.List as List_
 import Material.List.Item as ListItem
+import Set exposing (Set)
 import Url exposing (Protocol(..))
 
 
 type alias Model =
     { apiKey : String
     , feeds : Resource String (Dict String Feed)
-    , follows : Resource String (List UUID)
+
+    -- , follows : Resource String (List UUID)
     }
 
 
 type Msg
     = GotFeeds (Result Http.Error (List Feed))
-    | GotFollows (Result Http.Error (List UUID))
     | FollowFeed { feedID : String }
-    | FollowResult (Result Http.Error ())
-
-
-type alias FeedFollow =
-    { feed : Feed
-    , follow : Bool
-    }
+      -- | UnfollowFeed { feedID : String }
+    | FollowResult (Result Http.Error Feed.FeedFollow)
 
 
 init : String -> ( Model, Cmd Msg )
 init apiKey =
-    ( { apiKey = apiKey, feeds = Loading, follows = Loading }
+    ( { apiKey = apiKey, feeds = Loading }
     , Cmd.batch
-        [ fetchFeeds apiKey GotFeeds
-        , Feed.fetchFollows apiKey GotFollows
-        ]
+        [ fetchFeeds apiKey GotFeeds ]
     )
 
 
@@ -74,17 +68,31 @@ update msg model =
             in
             ( { model | feeds = Failed errMsg }, Cmd.none )
 
-        GotFollows (Ok follows) ->
-            ( { model | follows = Loaded follows }, Cmd.none )
-
-        GotFollows (Err err) ->
-            ( { model | follows = Failed (Debug.todo "") }, Cmd.none )
-
         FollowFeed { feedID } ->
             ( model, followFeed model.apiKey feedID FollowResult )
 
-        FollowResult (Ok ()) ->
-            Debug.todo ""
+        -- UnfollowFeed { feedID } ->
+        --     (model, follow)
+        FollowResult (Ok follow) ->
+            case model.feeds of
+                Loaded feeds ->
+                    let
+                        updatedFeeds =
+                            Dict.update follow.feedID
+                                (\feed ->
+                                    case feed of
+                                        Just f ->
+                                            Just { f | following = True }
+
+                                        _ ->
+                                            Nothing
+                                )
+                                feeds
+                    in
+                    ( { model | feeds = Loaded <| updatedFeeds }, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
 
         FollowResult (Err a) ->
             Debug.todo ""
@@ -92,15 +100,15 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    case Debug.log "view feeds" model.feeds of
+    case model.feeds of
         Loading ->
             viewLoading
 
-        Failed errMsg ->
-            viewFailed errMsg
-
         Loaded feeds ->
             viewFeeds feeds
+
+        Failed errMsg ->
+            viewFailed errMsg
 
 
 viewLoading : Html Msg
@@ -110,7 +118,7 @@ viewLoading =
 
 viewFailed : String -> Html Msg
 viewFailed err =
-    text <| "Failed to fetch feeds: " ++ err
+    errorBox <| Just <| "Failed to fetch feeds: " ++ err
 
 
 viewFeeds : Dict String Feed -> Html Msg
@@ -139,10 +147,22 @@ viewFeed feed =
         []
         [ Html.td [] [ text feed.url ]
         , Html.td []
-            [ IconButton.iconButton
-                (IconButton.config
-                    |> IconButton.setOnClick (FollowFeed { feedID = feed.id })
-                )
-                (IconButton.icon "add")
-            ]
+            [ viewFollowButton feed ]
         ]
+
+
+viewFollowButton : Feed -> Html Msg
+viewFollowButton feed =
+    let
+        ( icon, onClick ) =
+            if feed.following then
+                ( "close", FollowFeed { feedID = feed.id } )
+
+            else
+                ( "add", FollowFeed { feedID = feed.id } )
+    in
+    IconButton.iconButton
+        (IconButton.config
+            |> IconButton.setOnClick onClick
+        )
+        (IconButton.icon icon)

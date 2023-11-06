@@ -1,8 +1,8 @@
-module Feed exposing (Feed, UUID, createFeed, fetchFeeds, fetchFollows, followFeed)
+module Feed exposing (Feed, FeedFollow, UUID, createFeed, fetchFeeds, fetchFollows, followFeed)
 
 import Http exposing (header)
-import Json.Decode as Decode exposing (Decoder, list, string)
-import Json.Decode.Pipeline exposing (required)
+import Json.Decode as Decode exposing (Decoder, bool, list, string)
+import Json.Decode.Pipeline exposing (optional, required)
 import Json.Encode as Encode
 import Route exposing (apiBaseUrl)
 
@@ -11,6 +11,7 @@ type alias Feed =
     { id : String
     , name : String
     , url : String
+    , following : Bool
     }
 
 
@@ -20,14 +21,15 @@ feedDecoder =
         |> required "id" string
         |> required "name" string
         |> required "url" string
+        |> optional "following" bool False
 
 
 fetchFeeds : String -> (Result Http.Error (List Feed) -> msg) -> Cmd msg
 fetchFeeds apiKey toMsg =
     Http.request
         { method = "GET"
-        , headers = []
-        , url = apiBaseUrl ++ "/v1/feeds"
+        , headers = [ header "Authorization" <| "ApiKey " ++ apiKey ]
+        , url = apiBaseUrl ++ "/v1/feeds?follows=1"
         , body = Http.emptyBody
         , expect = Http.expectJson toMsg (list feedDecoder)
         , timeout = Nothing
@@ -94,7 +96,20 @@ fetchFollows apiKey toMsg =
         }
 
 
-followFeed : String -> String -> (Result Http.Error () -> msg) -> Cmd msg
+type alias FeedFollow =
+    { id : String
+    , feedID : String
+    }
+
+
+decodeFeedFollow : Decoder FeedFollow
+decodeFeedFollow =
+    Decode.succeed FeedFollow
+        |> required "id" string
+        |> required "feed_id" string
+
+
+followFeed : String -> String -> (Result Http.Error FeedFollow -> msg) -> Cmd msg
 followFeed apiKey feedID toMsg =
     let
         params =
@@ -105,7 +120,7 @@ followFeed apiKey feedID toMsg =
         , headers = [ header "Authorization" <| "ApiKey " ++ apiKey ]
         , url = apiBaseUrl ++ "/v1/feed_follows"
         , body = Http.jsonBody params
-        , expect = Http.expectWhatever toMsg
+        , expect = Http.expectJson toMsg decodeFeedFollow
         , timeout = Nothing
         , tracker = Nothing
         }
