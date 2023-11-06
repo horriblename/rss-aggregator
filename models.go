@@ -43,17 +43,21 @@ func PostFromDB(post *database.GetPostsByUserRow) Post {
 }
 
 type FeedWithFollows struct {
-	ID        uuid.UUID `json:"id"`
-	Name      string    `json:"name"`
-	Url       string    `json:"url"`
-	Following bool      `json:"following,omitempty"`
+	ID       uuid.UUID `json:"id"`
+	Name     string    `json:"name"`
+	Url      string    `json:"url"`
+	FollowID string    `json:"follow_id,omitempty"`
 }
 
 func FeedWithFollowsFromDB(feeds *database.GetFeedsWithFollowsRow) FeedWithFollows {
+	followID := ""
+	if feeds.FollowID.Valid {
+		followID = feeds.FollowID.UUID.String()
+	}
 	return FeedWithFollows{
-		ID:        feeds.ID,
-		Name:      feeds.Name,
-		Url:       feeds.Url,
-		Following: feeds.Following.Valid && feeds.Following.Bool,
+		ID:       feeds.ID,
+		Name:     feeds.Name,
+		Url:      feeds.Url,
+		FollowID: followID,
 	}
 }
