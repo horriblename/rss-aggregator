@@ -103,11 +103,13 @@ LEFT JOIN feeds AS f
 WHERE ff.user_id = $1
 ORDER BY p.published_at DESC
 LIMIT $2
+OFFSET $3
 `
 
 type GetPostsByUserParams struct {
 	UserID uuid.UUID `json:"user_id"`
 	Limit  int32     `json:"limit"`
+	Offset int32     `json:"offset"`
 }
 
 type GetPostsByUserRow struct {
@@ -126,7 +128,7 @@ type GetPostsByUserRow struct {
 }
 
 func (q *Queries) GetPostsByUser(ctx context.Context, arg GetPostsByUserParams) ([]GetPostsByUserRow, error) {
-	rows, err := q.db.QueryContext(ctx, getPostsByUser, arg.UserID, arg.Limit)
+	rows, err := q.db.QueryContext(ctx, getPostsByUser, arg.UserID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}

@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -385,20 +386,27 @@ func (cfg *apiConfig) getFeedFollows(w http.ResponseWriter, r *http.Request, use
 
 func (cfg *apiConfig) getPosts(w http.ResponseWriter, r *http.Request, user database.User) {
 	type getPostsArgs struct {
-		Limit int `json:"limit,omit_empty"`
+		limit  int
+		offset int
 	}
 
-	var args getPostsArgs
-	// FIXME: GET requests _should_ not accept a body - if possible, use query string parameters instead
-	_ = json.NewDecoder(r.Body).Decode(&args)
-
-	if args.Limit == 0 {
-		args.Limit = gGetPostDefaultLimit
+	query := r.URL.Query()
+	log.Printf("queies: %+v", query)
+	args := getPostsArgs{
+		limit:  unwrapOr(strconv.Atoi(query.Get("limit")))(gGetPostDefaultLimit),
+		offset: unwrapOr(strconv.Atoi(query.Get("offset")))(0),
 	}
+
+	if args.limit <= 0 {
+		args.limit = gGetPostDefaultLimit
+	}
+
+	log.Printf("getPosts args: %+v", args)
 
 	posts, err := cfg.queries.GetPostsByUser(cfg.ctx, database.GetPostsByUserParams{
 		UserID: user.ID,
-		Limit:  int32(args.Limit),
+		Limit:  int32(args.limit),
+		Offset: int32(args.offset),
 	})
 
 	if err != nil {
@@ -413,6 +421,20 @@ func (cfg *apiConfig) getPosts(w http.ResponseWriter, r *http.Request, user data
 	}
 
 	respondWithJSON(w, http.StatusOK, postsJSON)
+}
+
+// Ignores an error and uses a specified value instead
+// usage:
+// ```
+// unwrapOr(strconv.Atoi("5"))(10)  // => 5
+// unwrapOr(strconv.Atoi("n"))(10)  // => 10
+// ```
+func unwrapOr[T any](ans T, err error) func(T) T {
+	if err == nil {
+		return func(t T) T { return ans }
+	} else {
+		return func(t T) T { return t }
+	}
 }
 
 // errors are logged not returned

@@ -38,4 +38,5 @@ LEFT JOIN feeds AS f
     ON p.feed_id = f.id
 WHERE ff.user_id = $1
 ORDER BY p.published_at DESC
-LIMIT $2;
+LIMIT $2
+OFFSET $3;
