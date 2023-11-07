@@ -2,7 +2,7 @@ module Page.ViewPosts exposing (Model, Msg, init, update, view)
 
 import Common exposing (Resource(..))
 import Html exposing (..)
-import Html.Attributes exposing (style)
+import Html.Attributes exposing (disabled, style)
 import Html.Parser exposing (Node(..))
 import Html.Parser.Util
 import Http exposing (Error(..))
@@ -17,18 +17,21 @@ import Url exposing (Protocol(..))
 type alias Model =
     { posts : Resource String (List Post)
     , timezone : Resource () Time.Zone
+    , waitingMorePosts : Bool
+    , apiKey : String
     }
 
 
 type Msg
     = GotPosts (Result Http.Error (List Post))
     | GotTimeZone (Result () Time.Zone)
+    | FetchMorePosts
 
 
 init : String -> ( Model, Cmd Msg )
 init apiKey =
-    ( { posts = Loading, timezone = Loading }
-    , Cmd.batch [ fetchPosts apiKey GotPosts, Task.attempt GotTimeZone Time.here ]
+    ( { posts = Loading, timezone = Loading, waitingMorePosts = False, apiKey = apiKey }
+    , Cmd.batch [ fetchPosts apiKey 0 GotPosts, Task.attempt GotTimeZone Time.here ]
     )
 
 
@@ -42,7 +45,12 @@ update msg model =
             ( { model | timezone = Failed () }, Cmd.none )
 
         GotPosts (Ok posts) ->
-            ( { model | posts = Loaded posts }, Cmd.none )
+            case model.posts of
+                Loaded old ->
+                    ( { model | posts = Loaded (old ++ posts) }, Cmd.none )
+
+                _ ->
+                    ( { model | posts = Loaded posts }, Cmd.none )
 
         GotPosts (Err err) ->
             let
@@ -65,6 +73,16 @@ update msg model =
             in
             ( { model | posts = Failed errMsg }, Cmd.none )
 
+        FetchMorePosts ->
+            case model.posts of
+                Loaded posts ->
+                    ( { model | waitingMorePosts = True }
+                    , fetchPosts model.apiKey (List.length posts + 1) GotPosts
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
 
 view : Model -> Html Msg
 view model =
@@ -76,7 +94,7 @@ view model =
             viewFailed errMsg
 
         Loaded posts ->
-            viewPosts posts model.timezone
+            viewPosts posts model
 
 
 viewLoading : Html Msg
@@ -92,14 +110,17 @@ viewFailed err =
         ]
 
 
-viewPosts : List Post -> Resource () Time.Zone -> Html Msg
-viewPosts posts zone =
+viewPosts : List Post -> Model -> Html Msg
+viewPosts posts model =
     if List.length posts == 0 then
         text "You have no posts"
 
     else
         Grid.layoutGrid []
-            [ Grid.inner [] <| List.map (viewPost zone) posts ]
+            [ Grid.inner [] <|
+                List.map (viewPost model.timezone) posts
+                    ++ [ viewMore model.waitingMorePosts ]
+            ]
 
 
 viewPost : Resource () Time.Zone -> Post -> Html Msg
@@ -154,6 +175,24 @@ viewPost zone post =
     Grid.cell []
         [ Card.card (Card.config |> Card.setHref (Just post.url))
             { blocks = blocks
+            , actions = Nothing
+            }
+        ]
+
+
+viewMore : Bool -> Html Msg
+viewMore fetching =
+    Grid.cell []
+        [ Card.card
+            (Card.config
+                |> Card.setOnClick
+                    FetchMorePosts
+                |> Card.setAttributes
+                    [ disabled fetching
+                    , style "text-align" "center"
+                    ]
+            )
+            { blocks = ( Card.block (h2 [] [ text "See More" ]), [] )
             , actions = Nothing
             }
         ]
