@@ -27,7 +27,7 @@ type Msg
 
 
 type OutMsg
-    = CreatedFeed
+    = CreatedFeed Feed
 
 
 init : String -> ( Model, Cmd Msg )
@@ -47,8 +47,8 @@ update msg model =
         Submit ->
             ( model, createFeed model.apiKey CreateResult { name = model.name, url = model.url }, Nothing )
 
-        CreateResult (Ok _) ->
-            ( { model | createResult = Just (Loaded ()) }, Cmd.none, Just CreatedFeed )
+        CreateResult (Ok feed) ->
+            ( { model | createResult = Just (Loaded ()) }, Cmd.none, Just (CreatedFeed feed) )
 
         CreateResult (Err e) ->
             let

@@ -9,18 +9,22 @@ import Html.Keyed as Keyed
 import Html.Lazy exposing (lazy2)
 import Http exposing (Error(..))
 import Material.DataTable as DataTable
+import Material.Dialog as Dialog
+import Material.Fab as Fab
 import Material.IconButton as IconButton
 import Material.List as List_
 import Material.List.Item as ListItem
+import Page.NewFeed as NewFeed exposing (OutMsg(..))
 import Set exposing (Set)
 import Url exposing (Protocol(..))
 
 
 type alias Model =
     { apiKey : String
-    , feeds : Resource String (Dict String Feed)
 
-    -- , follows : Resource String (List UUID)
+    -- keyed by Feed.id
+    , feeds : Resource String (Dict String Feed)
+    , newFeedDialog : Maybe NewFeed.Model
     }
 
 
@@ -30,11 +34,21 @@ type Msg
     | UnfollowFeed { feedID : String, followID : String }
     | FollowResult (Result Http.Error Feed.FeedFollow)
     | UnfollowResult (Result Http.Error { feedID : UUID })
+    | OpenNewFeedDialog
+    | NewFeedDialogMsg NewFeed.Msg
+
+
+type Signal
+    = NewFeedSignal NewFeed.OutMsg
+
+
+
+-- | NewFeedAdded (Result Http.Error {feedID})
 
 
 init : String -> ( Model, Cmd Msg )
 init apiKey =
-    ( { apiKey = apiKey, feeds = Loading }
+    ( { apiKey = apiKey, feeds = Loading, newFeedDialog = Nothing }
     , Cmd.batch
         [ fetchFeeds apiKey GotFeeds ]
     )
@@ -117,6 +131,54 @@ update msg model =
             -- TODO: proper error handling
             ( model, Cmd.none )
 
+        OpenNewFeedDialog ->
+            let
+                ( subModel, subCmd ) =
+                    NewFeed.init model.apiKey
+            in
+            ( { model | newFeedDialog = Just subModel }, Cmd.map NewFeedDialogMsg subCmd )
+
+        NewFeedDialogMsg subMsg ->
+            case model.newFeedDialog of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just subModel ->
+                    let
+                        ( newSubmodel, cmd, out ) =
+                            NewFeed.update subMsg subModel
+
+                        preSignalModel =
+                            { model | newFeedDialog = Just newSubmodel }
+
+                        ( newModel, newMsg ) =
+                            case out of
+                                Just signal ->
+                                    processSignal preSignalModel (NewFeedSignal signal)
+
+                                Nothing ->
+                                    ( preSignalModel, Cmd.none )
+                    in
+                    ( newModel
+                    , Cmd.batch [ newMsg, Cmd.map NewFeedDialogMsg cmd ]
+                    )
+
+
+processSignal : Model -> Signal -> ( Model, Cmd Msg )
+processSignal model signal =
+    case signal of
+        NewFeedSignal (NewFeed.CreatedFeed feed) ->
+            case model.feeds of
+                Loaded oldFeeds ->
+                    let
+                        newFeeds =
+                            Dict.insert feed.id feed oldFeeds
+                    in
+                    ( { model | newFeedDialog = Nothing, feeds = Loaded newFeeds }, Cmd.none )
+
+                _ ->
+                    ( { model | newFeedDialog = Nothing }, Cmd.none )
+
 
 view : Model -> Html Msg
 view model =
@@ -125,7 +187,7 @@ view model =
             viewLoading
 
         Loaded feeds ->
-            viewFeeds feeds
+            viewFeeds feeds model.newFeedDialog
 
         Failed errMsg ->
             viewFailed errMsg
@@ -141,14 +203,27 @@ viewFailed err =
     errorBox <| Just <| "Failed to fetch feeds: " ++ err
 
 
-viewFeeds : Dict String Feed -> Html Msg
-viewFeeds feeds =
-    if Dict.isEmpty feeds then
-        text "No Feeds Found"
+viewFeeds : Dict String Feed -> Maybe NewFeed.Model -> Html Msg
+viewFeeds feeds newFeedModel =
+    div []
+        [ Fab.fab
+            (Fab.config
+                |> Fab.setOnClick OpenNewFeedDialog
+                |> Fab.setAttributes
+                    [ style "position" "fixed"
+                    , style "bottom" "2rem"
+                    , style "right" "2rem"
+                    ]
+            )
+            (Fab.icon "add")
+        , newFeedDialog newFeedModel
+        , if Dict.isEmpty feeds then
+            text "No Feeds Found"
 
-    else
-        Keyed.node "table" [ style "width" "100%" ] <|
-            List.map (\feed -> ( feed.id, viewFeed feed )) (Dict.values feeds)
+          else
+            Keyed.node "table" [ style "width" "100%" ] <|
+                List.map (\feed -> ( feed.id, viewFeed feed )) (Dict.values feeds)
+        ]
 
 
 
@@ -187,3 +262,30 @@ viewFollowButton feed =
             |> IconButton.setOnClick onClick
         )
         (IconButton.icon icon)
+
+
+isJust : Maybe a -> Bool
+isJust val =
+    case val of
+        Just _ ->
+            True
+
+        Nothing ->
+            False
+
+
+newFeedDialog : Maybe NewFeed.Model -> Html Msg
+newFeedDialog newFeedModel =
+    Html.map NewFeedDialogMsg <|
+        Dialog.simple
+            (Dialog.config |> Dialog.setOpen (isJust newFeedModel))
+            { title = ""
+            , content =
+                [ case newFeedModel of
+                    Just mod ->
+                        NewFeed.view mod
+
+                    Nothing ->
+                        text ""
+                ]
+            }
