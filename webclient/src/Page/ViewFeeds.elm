@@ -6,7 +6,7 @@ import Feed exposing (Feed, UUID, fetchFeeds, followFeed, unfollowFeed)
 import Html exposing (..)
 import Html.Attributes exposing (style)
 import Html.Keyed as Keyed
-import Html.Lazy exposing (lazy2)
+import Html.Lazy exposing (lazy, lazy2)
 import Http exposing (Error(..))
 import Material.DataTable as DataTable
 import Material.Dialog as Dialog
@@ -35,6 +35,7 @@ type Msg
     | FollowResult (Result Http.Error Feed.FeedFollow)
     | UnfollowResult (Result Http.Error { feedID : UUID })
     | OpenNewFeedDialog
+    | CloseNewFeedDialog
     | NewFeedDialogMsg NewFeed.Msg
 
 
@@ -138,6 +139,9 @@ update msg model =
             in
             ( { model | newFeedDialog = Just subModel }, Cmd.map NewFeedDialogMsg subCmd )
 
+        CloseNewFeedDialog ->
+            ( { model | newFeedDialog = Nothing }, Cmd.none )
+
         NewFeedDialogMsg subMsg ->
             case model.newFeedDialog of
                 Nothing ->
@@ -187,7 +191,7 @@ view model =
             viewLoading
 
         Loaded feeds ->
-            viewFeeds feeds model.newFeedDialog
+            lazy2 viewFeeds feeds model.newFeedDialog
 
         Failed errMsg ->
             viewFailed errMsg
@@ -216,7 +220,7 @@ viewFeeds feeds newFeedModel =
                     ]
             )
             (Fab.icon "add")
-        , newFeedDialog newFeedModel
+        , lazy newFeedDialog newFeedModel
         , if Dict.isEmpty feeds then
             text "No Feeds Found"
 
@@ -224,16 +228,6 @@ viewFeeds feeds newFeedModel =
             Keyed.node "table" [ style "width" "100%" ] <|
                 List.map (\feed -> ( feed.id, viewFeed feed )) (Dict.values feeds)
         ]
-
-
-
--- DataTable.dataTable
---     (DataTable.config
---         |> DataTable.setAttributes [ style "width" "100%" ]
---     )
---     { thead = []
---     , tbody =
---     }
 
 
 viewFeed : Feed -> Html Msg
@@ -264,6 +258,25 @@ viewFollowButton feed =
         (IconButton.icon icon)
 
 
+newFeedDialog : Maybe NewFeed.Model -> Html Msg
+newFeedDialog newFeedModel =
+    Dialog.simple
+        (Dialog.config
+            |> Dialog.setOpen (isJust newFeedModel)
+            |> Dialog.setOnClose CloseNewFeedDialog
+        )
+        { title = ""
+        , content =
+            [ case newFeedModel of
+                Just mod ->
+                    Html.map NewFeedDialogMsg <| NewFeed.view mod
+
+                Nothing ->
+                    text ""
+            ]
+        }
+
+
 isJust : Maybe a -> Bool
 isJust val =
     case val of
@@ -272,20 +285,3 @@ isJust val =
 
         Nothing ->
             False
-
-
-newFeedDialog : Maybe NewFeed.Model -> Html Msg
-newFeedDialog newFeedModel =
-    Html.map NewFeedDialogMsg <|
-        Dialog.simple
-            (Dialog.config |> Dialog.setOpen (isJust newFeedModel))
-            { title = ""
-            , content =
-                [ case newFeedModel of
-                    Just mod ->
-                        NewFeed.view mod
-
-                    Nothing ->
-                        text ""
-                ]
-            }
