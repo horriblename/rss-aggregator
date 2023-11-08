@@ -108,7 +108,7 @@ view model =
                 _ ->
                     False
     in
-    Html.form [ onSubmit Submit, Elevation.z12, style "padding" "1rem" ]
+    Html.form [ onSubmit Submit, style "padding" "1rem" ]
         [ errMsg
         , textField "Name" "Jame's Blog" OnInputName
         , textField "URL" "www.example.com/rss.xml" OnInputUrl
