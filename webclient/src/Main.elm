@@ -70,7 +70,7 @@ init flags url navKey =
         model =
             { apiKey = flags.apiKey
             , posts = []
-            , route = Route.parseUrl (Debug.log "url" url)
+            , route = Route.parseUrl url
             , page = NotFoundPage
             , navKey = navKey
             , drawer = Drawer.initialModel
@@ -103,7 +103,7 @@ initCurrentPage ( model, exisitngCmds ) =
                 Route.NewFeed ->
                     initAuthedPage NewFeedPage.init model NewFeedPage NewFeedPageMsg
     in
-    ( { model | page = Debug.log "currentPage" currentPage }
+    ( { model | page = currentPage }
     , Cmd.batch [ exisitngCmds, mappedPageCmds ]
     )
 

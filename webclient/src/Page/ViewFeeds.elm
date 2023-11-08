@@ -57,7 +57,7 @@ init apiKey =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case Debug.log "viewfeeds.update" msg of
+    case msg of
         GotFeeds (Ok feeds) ->
             let
                 dict =
@@ -244,7 +244,7 @@ viewFollowButton : Feed -> Html Msg
 viewFollowButton feed =
     let
         ( icon, onClick ) =
-            case Debug.log "follow id?" feed.followID of
+            case feed.followID of
                 Nothing ->
                     ( "add", FollowFeed { feedID = feed.id } )
 

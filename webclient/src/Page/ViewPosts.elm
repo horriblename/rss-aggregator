@@ -129,7 +129,7 @@ viewPost zone post =
         imageBlock =
             case post.media of
                 Just { url, mimetype } ->
-                    case getMimeRoot (Debug.log "mimetype" mimetype) of
+                    case getMimeRoot mimetype of
                         "image" ->
                             Just <| Card.sixteenToNineMedia [] url
 
@@ -137,7 +137,7 @@ viewPost zone post =
                             Nothing
 
                 _ ->
-                    Debug.log "no media" Nothing
+                    Nothing
 
         titleBlock =
             Card.block <|
