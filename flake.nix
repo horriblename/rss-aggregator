@@ -24,6 +24,42 @@
     packages = eachSystem (system: {
       default = self.packages.${system}.rss-aggre;
       inherit (pkgsFor.${system}) rss-aggre webclient;
+      dockerStream = with pkgsFor.${system};
+        dockerTools.streamLayeredImage {
+          name = "rss-aggre";
+          tag = "latest";
+          # fromImage = dockerTools.pullImage {
+          #   imageName = "alpine";
+          #   imageDigest = "sha256:f3334cc04a79d50f686efc0c84e3048cfb0961aba5f044c7422bd99b815610d3";
+          #   sha256 = "sha256-snYCbJocC3VLcVvOJzlujtHcJAHJHExhxoq/9r3yYvI=";
+          # };
+
+          # copyToRoot = buildEnv {
+          #   name = "rss-aggre";
+          #   pathsToLink = ["/bin"];
+          #   paths = [
+          #   ];
+          # };
+
+          contents = [self.packages.${system}.rss-aggre];
+
+          config = {
+            Cmd = ["/bin/rss-aggre"];
+            ExposedPorts = {
+              "80" = {};
+              "443" = {};
+            };
+            Env = [
+              "PORT=80"
+
+              # formatted as a psql connection string
+              # https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING
+              ''DATABASE_URL="user=rss-aggre host=localhost port=5432"''
+            ];
+            Entrypoint = [
+            ];
+          };
+        };
     });
     devShells = eachSystem (system: let
       pkgs = pkgsFor.${system};
