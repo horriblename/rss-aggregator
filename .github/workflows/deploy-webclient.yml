@@ -1,0 +1,15 @@
+name: Make sure generated static site is up to date
+
+on:
+  pull_request:
+
+jobs:
+  static-site-up-to-date:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v22
+      - run: nix develop -c 'make -C webclient'
+
+        # idk how to do this xd
+      - run: if ! git diff-index --quiet HEAD --; then exit 1; fi
