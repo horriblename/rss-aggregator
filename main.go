@@ -86,7 +86,7 @@ func startServer(serverCfg serverConfig, apiCfg apiConfig) error {
 
 	server := http.Server{
 		Handler: router,
-		Addr:    "localhost:" + serverCfg.port,
+		Addr:    ":" + serverCfg.port,
 	}
 
 	log.Printf("starting server...")
