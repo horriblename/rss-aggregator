@@ -11,5 +11,5 @@ jobs:
       - uses: cachix/install-nix-action@v22
       - run: nix build .#webclient
 
-        # idk how to do this xd
-      - run: if [ -n $(diff -qr result/share/rss-aggre-client/ webclient/deploy/) ]; then exit 1; fi
+        # diff returns 0 if inputs are the same, 1 if different
+      - run: diff -qr result/share/rss-aggre-client/ webclient/deploy/
