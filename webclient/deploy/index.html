@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title></title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body {
+        /* fixes chrome's default page margin */
+        margin: 0;
+      }
+    </style>
+    <link
+      href="https://fonts.googleapis.com/css?family=Roboto:300,400,500|Material+Icons"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/material-components-web-elm@9.1.0/dist/material-components-web-elm.min.css"
+    />
+    <script src="https://unpkg.com/material-components-web-elm@9.1.0/dist/material-components-web-elm.min.js"></script>
+  </head>
+
+  <body>
+    <main></main>
+    <script src="/main.js"></script>
+    <script>
+      var apiKey = localStorage.getItem("api-key");
+      console.log(apiKey ? "Retrieved api key" : "No api key in localStorage");
+      var app = Elm.Main.init({
+        node: document.querySelector("main"),
+        flags: { apiKey: apiKey },
+      });
+      app.ports.storeApiKey.subscribe(function (apiKey) {
+        localStorage.setItem("api-key", apiKey);
+        console.log("saved api-key");
+      });
+    </script>
+  </body>
+</html>

@@ -43,6 +43,7 @@
           elm-format
           elm-test
           elm-live
+          nodePackages.uglify-js
         ];
       };
     });
