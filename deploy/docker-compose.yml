@@ -5,7 +5,7 @@ services:
       - db
     restart: always
     ports:
-      - "8080:80"
+      - "443:443"
     environment:
       DATABASE_URL: "user=rss-aggre host=db port=5432 sslmode=disable"
 
