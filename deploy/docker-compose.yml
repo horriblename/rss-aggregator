@@ -1,6 +1,20 @@
 services:
-  # rss-aggre:
-  #   build: ..
+  rss-aggre:
+    image: "rss-aggre:latest"
+    depends_on:
+      - db
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      DATABASE_URL: "user=rss-aggre host=db port=5432 sslmode=disable"
+
+      # added specifically for docker images
+      DATABASE_PASSWORD_FILE: "/run/secrets/db_password"
+    networks:
+      - rss-aggre-network
+    secrets:
+      - db_password
 
   db:
     image: "postgres:15.4-alpine3.18"
@@ -15,10 +29,15 @@ services:
       - db_data:/var/lib/postgresql/data
     secrets:
       - db_password
+    networks:
+      - rss-aggre-network
 
 secrets:
   db_password:
     file: ./db_password.txt
+
+networks:
+  rss-aggre-network:
 
 volumes:
   db_data:

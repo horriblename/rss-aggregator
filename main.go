@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -48,6 +49,17 @@ func main() {
 	if dbURL == "" {
 		log.Print("missing env var $DATABASE_URL")
 		os.Exit(1)
+	}
+	dbPasswordFile := os.Getenv("DATABASE_PASSWORD_FILE")
+	if dbPasswordFile != "" {
+		pwd, err := os.ReadFile(dbPasswordFile)
+		if err != nil {
+			log.Fatalf("error reading DATABASE_PASSWORD_FILE(%s): %s", dbPasswordFile, err)
+		}
+
+		// escape "'" and "\" + delete newlines
+		sanitized := strings.NewReplacer("'", `\'`, `\`, `\\`, "\n", "").Replace((string(pwd)))
+		dbURL = fmt.Sprintf("%s password='%s'", dbURL, sanitized)
 	}
 
 	port := os.Getenv("PORT")
