@@ -1,0 +1,15 @@
+name: Make sure generated static site is up to date
+
+on:
+  pull_request:
+
+jobs:
+  static-site-up-to-date:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v22
+      - run: nix build .#webclient
+
+        # diff returns 0 if inputs are the same, 1 if different
+      - run: diff -qr result/share/rss-aggre-client/ webclient/deploy/

@@ -17,12 +17,16 @@
     overlays = {
       default = final: prev: {
         rss-aggre = final.callPackage ./rss-aggre.nix {};
+        webclient = final.callPackage ./webclient {
+          inherit (final.elmPackages) elm;
+          inherit (final.nodePackages) uglify-js;
+        };
       };
     };
 
     packages = eachSystem (system: {
       default = self.packages.${system}.rss-aggre;
-      inherit (pkgsFor.${system}) rss-aggre;
+      inherit (pkgsFor.${system}) rss-aggre webclient;
     });
     devShells = eachSystem (system: let
       pkgs = pkgsFor.${system};
@@ -43,6 +47,7 @@
           elm-format
           elm-test
           elm-live
+          nodePackages.uglify-js
         ];
       };
     });
