@@ -17,10 +17,7 @@
     overlays = {
       default = final: prev: {
         rss-aggre = final.callPackage ./rss-aggre.nix {};
-        webclient = final.callPackage ./webclient {
-          inherit (final.elmPackages) elm;
-          inherit (final.nodePackages) uglify-js;
-        };
+        webclient = final.callPackage ./webclient {};
       };
     };
 
