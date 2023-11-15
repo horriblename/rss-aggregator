@@ -25,8 +25,6 @@ all: build/server
 install: all
 	install -D --mode=755 --no-target-directory build/server $(BIN_NAME)
 
-.PHONY: stop watch all test compose compose-rebuild
-
 # Deployment
 # ----------
 .PHONY: push-goose push-rss-aggre push-images
@@ -45,6 +43,8 @@ push-rss-aggre:
 
 # Development niceties
 # --------------------
+
+.PHONY: stop watch all test compose compose-rebuild
 
 pidfile: build/server
 	$(MAKE) stop
