@@ -1,8 +1,13 @@
 services:
   rss-aggre:
-    image: "rss-aggre:latest"
+    image: "horriblename/rss-aggre:latest"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+        required: true
+      goose-migration:
+        condition: service_completed_successfully
+        required: true
     restart: always
     ports:
       - "443:443"
@@ -15,6 +20,27 @@ services:
       - rss-aggre-network
     secrets:
       - db_password
+
+  # Runs migration once and exits
+  goose-migration:
+    image: "horriblename/goose:latest"
+    depends_on:
+      db:
+        condition: service_healthy
+        required: true
+    restart: "no"
+    environment:
+      DATABASE_HOST: db
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+      POSTGRES_USER: rss-aggre
+    volumes:
+      - ../sql/schema:/schema
+      - ./update_schema.sh:/usr/local/bin/docker_entrypoint.sh
+    entrypoint: /usr/local/bin/docker_entrypoint.sh
+    secrets:
+      - db_password
+    networks:
+      - rss-aggre-network
 
   db:
     image: "postgres:15.4-alpine3.18"
@@ -31,6 +57,14 @@ services:
       - db_password
     networks:
       - rss-aggre-network
+
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "rss-aggre"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 2m
+      start_interval: 5s
 
 secrets:
   db_password:
