@@ -1,10 +1,10 @@
 module Feed exposing (Feed, FeedFollow, UUID, createFeed, fetchFeeds, fetchFollows, followFeed, unfollowFeed)
 
+import ApiUrl exposing (apiBaseUrl)
 import Http exposing (header)
 import Json.Decode as Decode exposing (Decoder, list, string)
 import Json.Decode.Pipeline exposing (optional, required)
 import Json.Encode as Encode
-import Route exposing (apiBaseUrl)
 
 
 type alias Feed =
