@@ -26,7 +26,7 @@
       inherit (pkgsFor.${system}) rss-aggre webclient;
       dockerStream = with pkgsFor.${system};
         dockerTools.streamLayeredImage {
-          name = "rss-aggre";
+          name = "horriblename/rss-aggre";
           tag = "latest";
 
           # I don't wanna deal with TLS certs so I'm stealing them from alpine :p
@@ -35,13 +35,6 @@
             imageDigest = "sha256:f3334cc04a79d50f686efc0c84e3048cfb0961aba5f044c7422bd99b815610d3";
             sha256 = "sha256-snYCbJocC3VLcVvOJzlujtHcJAHJHExhxoq/9r3yYvI=";
           };
-
-          # copyToRoot = buildEnv {
-          #   name = "rss-aggre";
-          #   pathsToLink = ["/bin"];
-          #   paths = [
-          #   ];
-          # };
 
           contents = [self.packages.${system}.rss-aggre];
 
@@ -66,6 +59,22 @@
             Entrypoint = [
             ];
           };
+        };
+      # Image with goose installed, doesn't do anything by default
+      gooseImageStream = let
+        inherit (pkgsFor.${system}) dockerTools goose;
+      in
+        dockerTools.streamLayeredImage {
+          name = "horriblename/goose";
+          tag = "latest";
+
+          fromImage = dockerTools.pullImage {
+            imageName = "alpine";
+            imageDigest = "sha256:f3334cc04a79d50f686efc0c84e3048cfb0961aba5f044c7422bd99b815610d3";
+            sha256 = "sha256-snYCbJocC3VLcVvOJzlujtHcJAHJHExhxoq/9r3yYvI=";
+          };
+
+          contents = [goose];
         };
     });
     devShells = eachSystem (system: let
