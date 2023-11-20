@@ -16,7 +16,7 @@
   in {
     overlays = {
       default = final: prev: {
-        rss-aggre = final.callPackage ./rss-aggre.nix {};
+        rss-aggre = final.callPackage ./nix/rss-aggre.nix {};
         webclient = final.callPackage ./webclient {};
       };
     };
