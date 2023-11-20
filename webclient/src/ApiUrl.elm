@@ -3,4 +3,4 @@ module ApiUrl exposing (apiBaseUrl)
 
 apiBaseUrl : String
 apiBaseUrl =
-    "http://horriblename.site"
+    "https://rss-aggre.horriblename.site"
