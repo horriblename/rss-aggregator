@@ -9,16 +9,25 @@
 in {
   options.services.rss-aggre = {
     enable = lib.mkEnableOption "RSS aggregator service";
+
     package = lib.mkOption {
       description = "RSS Aggregator package";
       type = types.package;
       default = pkgs.rss-aggre;
     };
+
     goosePackage = lib.mkOption {
       description = "Goose package, used for database migrations";
       type = types.package;
       default = pkgs.goose;
     };
+
+    port = lib.mkOption {
+      description = "RSS Aggragator server port";
+      type = types.port;
+      default = 12080;
+    };
+
     postgres = {
       # user = lib.mkOption {
       #   description = "Postgres Database user";
@@ -41,8 +50,8 @@ in {
   config = lib.mkIf cfg.enable (
     let
       pgUser = "rss-aggre";
-      connString = "user=${pgUser} host=${config.services.postgresql.dataDir} dbname=${cfg.postgres.dbName}";
-      rssAggrePort = "12080";
+      # unix socket seems to be called /var/run/postgres (without '...ql')
+      connString = "user=${pgUser} host=/var/run/postgresql dbname=${cfg.postgres.dbName}";
     in {
       services.postgresql = {
         enable = true;
@@ -50,11 +59,8 @@ in {
         ensureUsers = [
           {name = pgUser;}
         ];
+        ensureDatabases = [cfg.postgres.dbName];
       };
-
-      services.caddy.configFile = ''
-        reverse_proxy :80 ${rssAggrePort}
-      '';
 
       users.users.rss-aggre = {
         isNormalUser = true;
@@ -92,7 +98,7 @@ in {
         wantedBy = ["multi-user.target"];
         after = ["postgresql.target"];
         environment = {
-          PORT = rssAggrePort;
+          PORT = toString cfg.port;
           DATABASE_URL = connString;
         };
 
