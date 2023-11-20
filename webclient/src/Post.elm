@@ -1,10 +1,10 @@
 module Post exposing (Post, fetchPosts)
 
+import ApiUrl exposing (apiBaseUrl)
 import Http exposing (header)
 import Iso8601
 import Json.Decode as Decode exposing (Decoder, andThen, list, maybe, string)
 import Json.Decode.Pipeline exposing (optional, required)
-import Route exposing (apiBaseUrl)
 import Time
 
 

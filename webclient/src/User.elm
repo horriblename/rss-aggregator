@@ -1,9 +1,9 @@
 module User exposing (User, registerUser)
 
+import ApiUrl exposing (apiBaseUrl)
 import Http exposing (stringBody)
 import Json.Decode as Decode exposing (Decoder, string)
 import Json.Decode.Pipeline exposing (hardcoded, optional, required)
-import Route exposing (apiBaseUrl)
 
 
 
