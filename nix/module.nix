@@ -72,14 +72,14 @@ in {
         wantedBy = ["multi-user.target"];
         after = ["rss-aggre.target"];
 
-        path = [cfg.goosePackage cfg.package.migrations];
+        path = [cfg.goosePackage];
         serviceConfig = {
           User = "rss-aggre";
           Group = "rss-aggre";
           Type = "oneshot";
+          WorkingDirectory = toString cfg.package.migrations;
           ExecStart = pkgs.writeShellScript "rss-aggre-migration-script" ''
             set -e
-            cd ${cfg.package.migrations}
             connString='${connString}'
 
             exec goose postgres "$connString" up
