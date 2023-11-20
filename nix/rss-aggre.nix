@@ -1,16 +1,28 @@
-{buildGoModule}:
-buildGoModule {
-  pname = "rss-aggre";
-  version = "0.1";
+{
+  buildGoModule,
+  lib,
+}: let
+  inherit (lib.sources) cleanSourceWith cleanSourceFilter;
+in
+  buildGoModule {
+    pname = "rss-aggre";
+    version = "0.1";
 
-  src = ../.;
-  vendorHash = "sha256-lX+5edOBfwmuik8C3+OPLlizR3iDg7VK+Ov0gh4BRM8=";
+    src = cleanSourceWith {
+      filter = cleanSourceFilter;
+      src = cleanSourceWith {
+        filter = name: _type: ! (lib.hasSuffix ".nix" (toString name));
+        src = ../.;
+      };
+    };
 
-  outputs = ["out"];
+    vendorHash = "sha256-lX+5edOBfwmuik8C3+OPLlizR3iDg7VK+Ov0gh4BRM8=";
 
-  migrations = ../sql/schema;
+    outputs = ["out"];
 
-  meta = {
-    mainProgram = "rss-aggre";
-  };
-}
+    migrations = ../sql/schema;
+
+    meta = {
+      mainProgram = "rss-aggre";
+    };
+  }
