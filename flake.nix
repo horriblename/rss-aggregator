@@ -18,12 +18,15 @@
       default = final: prev: {
         rss-aggre = final.callPackage ./nix/rss-aggre.nix {};
         webclient = final.callPackage ./webclient {};
+        rss-aggre-nixos-deploy-script = final.callPackage ./nix/nixos-deploy.nix {rss-aggre-src = self;};
       };
     };
 
+    nixosModules.default = import ./nix/module.nix;
+
     packages = eachSystem (system: {
       default = self.packages.${system}.rss-aggre;
-      inherit (pkgsFor.${system}) rss-aggre webclient;
+      inherit (pkgsFor.${system}) rss-aggre webclient rss-aggre-nixos-deploy-script;
       dockerStream = with pkgsFor.${system};
         dockerTools.streamLayeredImage {
           name = "horriblename/rss-aggre";
