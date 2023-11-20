@@ -77,7 +77,7 @@ in {
           User = "rss-aggre";
           Group = "rss-aggre";
           Type = "oneshot";
-          WorkingDirectory = toString cfg.package.migrations;
+          WorkingDirectory = "${cfg.package}/share/rss-aggre/schema";
           ExecStart = pkgs.writeShellScript "rss-aggre-migration-script" ''
             set -e
             connString='${connString}'
