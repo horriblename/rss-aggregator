@@ -17,7 +17,7 @@
     overlays = {
       default = final: prev: {
         rss-aggre = final.callPackage ./nix/rss-aggre.nix {};
-        webclient = final.callPackage ./webclient {};
+        rss-aggre-webclient = final.callPackage ./webclient {};
       };
     };
 
@@ -25,7 +25,7 @@
 
     packages = eachSystem (system: {
       default = self.packages.${system}.rss-aggre;
-      inherit (pkgsFor.${system}) rss-aggre webclient;
+      inherit (pkgsFor.${system}) rss-aggre rss-aggre-webclient;
       dockerStream = pkgsFor.${system}.callPackage ./nix/rssAggreDockerStream.nix {};
       # Image with goose installed, doesn't do anything by default
       gooseImageStream = pkgsFor.${system}.callPackage ./nix/gooseDockerStream.nix {};
