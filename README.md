@@ -2,7 +2,7 @@
 
 An RSS Aggregator webapp
 
-![rss-aggre-screenshot](attachments/rss-aggre-screenshot.png)
+![rss-aggre-screenshot](.github/resources/rss-aggre-screenshot.png)
 
 ## Deployment
 
