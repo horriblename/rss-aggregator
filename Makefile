@@ -48,7 +48,7 @@ push-rss-aggre:
 
 pidfile: build/server
 	$(MAKE) stop
-	$< & echo $$! > pidfile
+	env PORT=8080 $< & echo $$! > pidfile
 
 stop:
 	if [ -f pidfile ]; then kill "$$(cat pidfile)"; rm pidfile; fi
