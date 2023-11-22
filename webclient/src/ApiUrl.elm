@@ -3,4 +3,4 @@ module ApiUrl exposing (apiBaseUrl)
 
 apiBaseUrl : String
 apiBaseUrl =
-    "https://rss-aggre.horriblename.site"
+    "http://localhost:8080"
