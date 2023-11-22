@@ -37,7 +37,7 @@ push-goose:
 	$(DOCKER_CMD) push horriblename/goose:latest
 
 push-rss-aggre:
-	nix build .\#dockerImage
+	nix build .\#dockerStream
 	./result | $(DOCKER_CMD) load
 	$(DOCKER_CMD) push horriblename/rss-aggre:latest
 
