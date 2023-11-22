@@ -16,6 +16,7 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/google/uuid"
 	"github.com/horriblename/rss-aggre/internal/database"
+	"golang.org/x/crypto/bcrypt"
 
 	// "github.com/go-chi/cors"
 	"github.com/joho/godotenv"
@@ -190,12 +191,15 @@ func (cfg *apiConfig) getUsers(w http.ResponseWriter, r *http.Request, user data
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, &user)
+	userJSON := UserFromDB(&user)
+
+	respondWithJSON(w, http.StatusOK, &userJSON)
 }
 
 func (cfg *apiConfig) postUsers(w http.ResponseWriter, r *http.Request) {
 	type postUsersRequest struct {
-		Name string `json:"name"`
+		Name     string `json:"name"`
+		Password string `json:"password"`
 	}
 
 	var requestBody postUsersRequest
@@ -208,11 +212,17 @@ func (cfg *apiConfig) postUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	pwHash, err := bcrypt.GenerateFromPassword([]byte(requestBody.Password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Printf("bad password: is it too long? (more than 72 bytes)")
+	}
+
 	user, err := cfg.queries.CreateUser(cfg.ctx, database.CreateUserParams{
-		ID:        uuid.New(),
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		Name:      requestBody.Name,
+		ID:           uuid.New(),
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+		Name:         requestBody.Name,
+		Passwordhash: pwHash,
 	})
 
 	if err != nil {
