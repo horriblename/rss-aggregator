@@ -112,6 +112,7 @@ func v1Router(apiCfg apiConfig) chi.Router {
 	r.Get("/err", getErr)
 	r.Get("/users", apiCfg.middlewareAuth(apiCfg.getUsers))
 	r.Post("/users", apiCfg.postUsers)
+	r.Post("/login", apiCfg.postLogin)
 	r.Post("/feeds", apiCfg.middlewareAuth(apiCfg.postFeeds))
 	r.Get("/feeds", apiCfg.getFeeds)
 	r.Post("/feed_follows", apiCfg.middlewareAuth(apiCfg.postFeedFollow))
@@ -232,6 +233,34 @@ func (cfg *apiConfig) postUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondWithJSON(w, http.StatusOK, &user)
+}
+
+func (cfg *apiConfig) postLogin(w http.ResponseWriter, r *http.Request) {
+	type postLoginRequest struct {
+		Name     string `json:"name"`
+		Password string `json:"password"`
+	}
+
+	var req postLoginRequest
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&req)
+	if err != nil {
+		// log.Printf("error decoding json")
+		respondWithError(w, http.StatusBadRequest, "Error decoding JSON")
+		return
+	}
+
+	user, err := cfg.queries.GetUserFromName(cfg.ctx, req.Name)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "User name does not exist")
+	}
+
+	err = bcrypt.CompareHashAndPassword(user.Passwordhash, []byte(req.Password))
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Wrong Password")
+	}
+
+	respondWithJSON(w, http.StatusOK, "TODO: jwt")
 }
 
 func (cfg *apiConfig) postFeeds(w http.ResponseWriter, r *http.Request, user database.User) {
