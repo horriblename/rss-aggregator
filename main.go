@@ -23,6 +23,7 @@ import (
 	"github.com/joho/godotenv"
 
 	// we don't use the db driver directly, but we must import it
+	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 )
 
@@ -239,6 +240,14 @@ func (cfg *apiConfig) postUsers(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
+		if err, ok := err.(*pq.Error); ok {
+			// constraint name specified in sql/schema/009_user_unique_name.sql
+			if err.Constraint == "user_name_unique" {
+				respondWithError(w, http.StatusUnauthorized, "Username unavailable")
+				return
+			}
+		}
+
 		log.Printf("error db: %s", err)
 		respondWithError(w, http.StatusInternalServerError, "DB error")
 		return
