@@ -13,8 +13,8 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (id, created_at, updated_at, name)
-VALUES ($1, $2, $3, $4)
+INSERT INTO users (id, created_at, updated_at, name, passwordHash)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING id, created_at, updated_at, name, apikey, passwordhash
 `
 
@@ -32,6 +32,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		arg.CreatedAt,
 		arg.UpdatedAt,
 		arg.Name,
+		arg.Passwordhash,
 	)
 	var i User
 	err := row.Scan(
@@ -54,6 +55,27 @@ LIMIT 1
 
 func (q *Queries) GetUser(ctx context.Context, apikey string) (User, error) {
 	row := q.db.QueryRowContext(ctx, getUser, apikey)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Name,
+		&i.Apikey,
+		&i.Passwordhash,
+	)
+	return i, err
+}
+
+const getUserFromName = `-- name: GetUserFromName :one
+SELECT id, created_at, updated_at, name, apikey, passwordhash
+FROM users
+WHERE name = $1
+LIMIT 1
+`
+
+func (q *Queries) GetUserFromName(ctx context.Context, name string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserFromName, name)
 	var i User
 	err := row.Scan(
 		&i.ID,
