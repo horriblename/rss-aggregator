@@ -15,14 +15,15 @@ import (
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (id, created_at, updated_at, name)
 VALUES ($1, $2, $3, $4)
-RETURNING id, created_at, updated_at, name, apikey
+RETURNING id, created_at, updated_at, name, apikey, passwordhash
 `
 
 type CreateUserParams struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Name      string    `json:"name"`
+	ID           uuid.UUID `json:"id"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+	Name         string    `json:"name"`
+	Passwordhash []byte    `json:"passwordhash"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -39,12 +40,13 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.UpdatedAt,
 		&i.Name,
 		&i.Apikey,
+		&i.Passwordhash,
 	)
 	return i, err
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, created_at, updated_at, name, apikey
+SELECT id, created_at, updated_at, name, apikey, passwordhash
 FROM users
 WHERE apikey = $1
 LIMIT 1
@@ -59,6 +61,7 @@ func (q *Queries) GetUser(ctx context.Context, apikey string) (User, error) {
 		&i.UpdatedAt,
 		&i.Name,
 		&i.Apikey,
+		&i.Passwordhash,
 	)
 	return i, err
 }
