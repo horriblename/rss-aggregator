@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/cors"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/horriblename/rss-aggre/internal/database"
 	"golang.org/x/crypto/bcrypt"
@@ -26,8 +27,12 @@ import (
 )
 
 const (
-	gGetPostDefaultLimit = 20
-	gFetchFeedInterval   = 60 * time.Second
+	gGetPostDefaultLimit           = 20
+	gFetchFeedInterval             = 60 * time.Second
+	gAccessTokIssuer               = "rss-aggre.horriblename.site"
+	gRefreshTokIssuer              = "rss-aggre.horriblename.site"
+	gRefreshTokenExpirationSeconds = 1 * 60 * 60
+	gAccessTokenExpirationSeconds  = 60 * 24 * 60 * 60
 )
 
 type serverConfig struct {
@@ -35,9 +40,10 @@ type serverConfig struct {
 }
 
 type apiConfig struct {
-	queries *database.Queries
-	db      *sql.DB
-	ctx     context.Context
+	queries   *database.Queries
+	db        *sql.DB
+	jwtSecret []byte
+	ctx       context.Context
 }
 
 type authedHandler func(http.ResponseWriter, *http.Request, database.User)
@@ -73,7 +79,12 @@ func main() {
 	if err != nil {
 		log.Printf("opening db: %s", err)
 	}
-	apiCfg := apiConfig{database.New(db), db, context.Background()}
+
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		log.Fatal("missing env var $JWT_SECRET")
+	}
+	apiCfg := apiConfig{database.New(db), db, []byte(jwtSecret), context.Background()}
 
 	go fetchFeedLoop(apiCfg)
 
@@ -253,14 +264,53 @@ func (cfg *apiConfig) postLogin(w http.ResponseWriter, r *http.Request) {
 	user, err := cfg.queries.GetUserFromName(cfg.ctx, req.Name)
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, "User name does not exist")
+		return
 	}
 
 	err = bcrypt.CompareHashAndPassword(user.Passwordhash, []byte(req.Password))
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, "Wrong Password")
+		return
 	}
 
-	respondWithJSON(w, http.StatusOK, "TODO: jwt")
+	accessTokClaims := jwt.RegisteredClaims{
+		Issuer:    gAccessTokIssuer,
+		Subject:   user.ID.String(),
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(gAccessTokenExpirationSeconds) * time.Second)),
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
+	}
+
+	refreshTokClaims := jwt.RegisteredClaims{
+		Issuer:    gRefreshTokIssuer,
+		Subject:   user.ID.String(),
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(gRefreshTokenExpirationSeconds) * time.Second)),
+	}
+
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessTokClaims)
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshTokClaims)
+
+	accessTokStr, err := accessToken.SignedString(cfg.jwtSecret)
+	if err != nil {
+		fmt.Printf("signing JWT token: %s\n", err)
+		respondWithError(w, http.StatusInternalServerError, "Internal Error")
+		return
+	}
+
+	refreshTokStr, err := refreshToken.SignedString(cfg.jwtSecret)
+	if err != nil {
+		fmt.Printf("signing JWT token: %s\n", err)
+		respondWithError(w, http.StatusInternalServerError, "Internal Error")
+		return
+	}
+
+	resp := LoginResponse{
+		UserID:       user.ID,
+		AccessToken:  accessTokStr,
+		RefreshToken: refreshTokStr,
+	}
+
+	respondWithJSON(w, http.StatusOK, resp)
 }
 
 func (cfg *apiConfig) postFeeds(w http.ResponseWriter, r *http.Request, user database.User) {

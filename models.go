@@ -79,3 +79,9 @@ func UserFromDB(user *database.User) User {
 		Apikey:    user.Apikey,
 	}
 }
+
+type LoginResponse struct {
+	UserID       uuid.UUID `json:"id"`
+	AccessToken  string    `json:"access_token"`
+	RefreshToken string    `json:"refresh_token"`
+}
