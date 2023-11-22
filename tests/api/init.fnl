@@ -23,11 +23,13 @@
       (endpoint :v1/readiness)
       {:asserts [status-ok]})
 
+(local dummy-user {:name :John :password :abdcxyz01c})
+
 (var api-key nil)
 (test "POST users: create user"
       :POST
       (endpoint :v1/users)
-      {:body {:name :John}
+      {:body dummy-user
       :asserts [status-ok #(= $1.body.name :John)]
       :scripts [#(set api-key (assert $1.body.apikey))]})
 
