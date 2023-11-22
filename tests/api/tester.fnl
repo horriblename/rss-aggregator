@@ -16,7 +16,7 @@
 (lambda json_decode [msg]
   (case (pcall json.decode msg)
 		  (true val) val
-		  (false err) (error (f "decoding json: %s\ninput: %s" err msg))))
+		  (false err) (error (f "this doesn't look like json: \n---\n%s\n---\n\n error message: %s" msg err))))
 
 (lambda test [desc method url ?args]
   "request and response bodies are en/decoded to/from JSON,"
