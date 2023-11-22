@@ -40,12 +40,6 @@
       # used by ./configure
       API_URL_FILE_CONTENT = apiUrlFile;
 
-      configureScript = ''
-        if [ -n "$API_URL_FILE_CONTENT" ]; then
-        	echo "$API_URL_FILE_CONTENT" > src/ApiUrl.elm
-        fi
-      '';
-
       installPhase = let
         elmfile = module: "${srcdir}/${builtins.replaceStrings ["."] ["/"] module}.elm";
         extension =

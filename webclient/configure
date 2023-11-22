@@ -1,0 +1,6 @@
+#!/bin/sh
+
+if [ -n "$API_URL_FILE_CONTENT" ]; then
+	echo "$API_URL_FILE_CONTENT" > src/ApiUrl.elm
+fi
+
