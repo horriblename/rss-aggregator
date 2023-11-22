@@ -123,6 +123,7 @@ func v1Router(apiCfg apiConfig) chi.Router {
 	r.Get("/err", getErr)
 	r.Get("/users", apiCfg.middlewareAuth(apiCfg.getUsers))
 	r.Post("/users", apiCfg.postUsers)
+	r.Delete("/users", apiCfg.deleteUsers)
 	r.Post("/login", apiCfg.postLogin)
 	r.Post("/feeds", apiCfg.middlewareAuth(apiCfg.postFeeds))
 	r.Get("/feeds", apiCfg.getFeeds)
@@ -244,6 +245,62 @@ func (cfg *apiConfig) postUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondWithJSON(w, http.StatusOK, &user)
+}
+
+func (cfg *apiConfig) deleteUsers(w http.ResponseWriter, r *http.Request) {
+	type response struct {
+		Status string `json:"status"`
+	}
+	type deleteUsersArgs struct {
+		Name     string `json:"name"`
+		Password string `json:"password"`
+	}
+
+	var req deleteUsersArgs
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&req)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Error decoding JSON")
+		return
+	}
+
+	tx, err := cfg.db.Begin()
+	if err != nil {
+		log.Printf("db begin transaction: %s", err)
+		respondWithError(w, http.StatusInternalServerError, "DB Error")
+		return
+	}
+	defer tx.Rollback()
+	qtx := cfg.queries.WithTx(tx)
+
+	user, err := qtx.GetUserFromName(cfg.ctx, req.Name)
+
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "User name does not exist")
+		return
+	}
+
+	err = bcrypt.CompareHashAndPassword(user.Passwordhash, []byte(req.Password))
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Wrong Password")
+		return
+	}
+
+	err = qtx.DeleteUser(cfg.ctx, user.ID)
+	if err != nil {
+		log.Printf("db deleting user: %s", err)
+		respondWithError(w, http.StatusInternalServerError, "DB Error")
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Printf("in deleteUsers: db commiting transaction: %s", err)
+		respondWithError(w, http.StatusInternalServerError, "DB Error")
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, response{"ok"})
 }
 
 func (cfg *apiConfig) postLogin(w http.ResponseWriter, r *http.Request) {
