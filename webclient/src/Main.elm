@@ -4,6 +4,7 @@ port module Main exposing (main, storeAccessToken)
 
 import Browser exposing (Document, UrlRequest)
 import Browser.Navigation as Nav
+import Common exposing (Resource(..), refreshAccessToken)
 import Drawer
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -57,6 +58,7 @@ type alias Model =
 type Page
     = NotFoundPage
     | RegisterPage RegisterPage.Model
+    | LoadingPage (Resource String Page)
     | LoginPage LoginPage.Model
     | FeedsPage FeedsPage.Model
     | PostsPage PostsPage.Model
@@ -139,7 +141,8 @@ initAuthedPage pageInit model toModel toMsg =
             ( toModel pageModel, Cmd.map toMsg pageCmds )
 
         ( Nothing, Just _ ) ->
-            Debug.todo "refresh access token"
+            -- FIXME: refresh token
+            ( LoadingPage Loading, Cmd.none )
 
 
 
@@ -348,6 +351,9 @@ currentView model =
         NotFoundPage ->
             notFoundView
 
+        LoadingPage _ ->
+            viewLoading
+
         RegisterPage pageModel ->
             Lazy.lazy RegisterPage.view pageModel
                 |> Html.map RegisterPageMsg
@@ -372,6 +378,11 @@ currentView model =
 notFoundView : Html Msg
 notFoundView =
     text "Page Not Found"
+
+
+viewLoading : Html Msg
+viewLoading =
+    text "Loading..."
 
 
 
