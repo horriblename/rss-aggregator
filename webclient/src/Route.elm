@@ -7,7 +7,7 @@ import Url.Parser exposing (..)
 type Route
     = NotFound
     | Posts
-    | Login
+    | Register
     | Feeds
     | NewFeed
 
@@ -32,7 +32,7 @@ matchRoute =
     oneOf
         [ map Posts top
         , map Posts (s "posts")
-        , map Login (s "login")
+        , map Register (s "register")
         , map Feeds (s "feeds")
         , map NewFeed (s "feeds" </> s "new")
         ]

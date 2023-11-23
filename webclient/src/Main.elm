@@ -1,4 +1,4 @@
-port module Main exposing (main, storeApiKey)
+port module Main exposing (main, storeAccessToken)
 
 -- import Browser.Navigation as Nav
 
@@ -12,8 +12,8 @@ import Material.Icon as Icon
 import Material.IconButton as IconButton
 import Material.TopAppBar as TopAppBar
 import Material.Typography exposing (typography)
-import Page.Login as LoginPage exposing (OutMsg(..))
 import Page.NewFeed as NewFeedPage exposing (OutMsg(..))
+import Page.Register as RegisterPage exposing (OutMsg(..))
 import Page.ViewFeeds as FeedsPage
 import Page.ViewPosts as PostsPage
 import Platform.Cmd as Cmd
@@ -43,7 +43,8 @@ main =
 
 
 type alias Model =
-    { apiKey : Maybe String
+    { accessToken : Maybe String
+    , refreshToken : Maybe String
     , posts : List Post
     , route : Route
     , page : Page
@@ -54,21 +55,24 @@ type alias Model =
 
 type Page
     = NotFoundPage
-    | LoginPage LoginPage.Model
+    | RegisterPage RegisterPage.Model
     | FeedsPage FeedsPage.Model
     | PostsPage PostsPage.Model
     | NewFeedPage NewFeedPage.Model
 
 
 type alias Flags =
-    { apiKey : Maybe String }
+    { accessToken : Maybe String
+    , refreshToken : Maybe String
+    }
 
 
 init : Flags -> Url -> Nav.Key -> ( Model, Cmd Msg )
 init flags url navKey =
     let
         model =
-            { apiKey = flags.apiKey
+            { accessToken = flags.accessToken
+            , refreshToken = flags.refreshToken
             , posts = []
             , route = Route.parseUrl url
             , page = NotFoundPage
@@ -90,12 +94,12 @@ initCurrentPage ( model, exisitngCmds ) =
                 Route.Posts ->
                     initAuthedPage PostsPage.init model PostsPage PostsPageMsg
 
-                Route.Login ->
+                Route.Register ->
                     let
                         ( pageModel, pageCmds ) =
-                            LoginPage.init ()
+                            RegisterPage.init ()
                     in
-                    ( LoginPage pageModel, Cmd.map LoginPageMsg pageCmds )
+                    ( RegisterPage pageModel, Cmd.map RegisterPageMsg pageCmds )
 
                 Route.Feeds ->
                     initAuthedPage FeedsPage.init model FeedsPage FeedsPageMsg
@@ -114,23 +118,29 @@ type alias Init a model msg =
 
 initAuthedPage : Init String model msg -> Model -> (model -> Page) -> (msg -> Msg) -> ( Page, Cmd Msg )
 initAuthedPage pageInit model toModel toMsg =
-    case model.apiKey of
-        Nothing ->
-            ( NotFoundPage, Nav.pushUrl model.navKey "/login" )
+    case ( model.accessToken, model.refreshToken ) of
+        ( Nothing, Nothing ) ->
+            ( NotFoundPage, Nav.pushUrl model.navKey "/register" )
 
-        Just apiKey ->
+        ( Just accToken, _ ) ->
             let
                 ( pageModel, pageCmds ) =
-                    pageInit apiKey
+                    pageInit accToken
             in
             ( toModel pageModel, Cmd.map toMsg pageCmds )
+
+        ( Nothing, Just _ ) ->
+            Debug.todo "refresh access token"
 
 
 
 -- PORTS
 
 
-port storeApiKey : String -> Cmd msg
+port storeAccessToken : String -> Cmd msg
+
+
+port storeRefreshToken : String -> Cmd msg
 
 
 
@@ -138,7 +148,7 @@ port storeApiKey : String -> Cmd msg
 
 
 type Msg
-    = LoginPageMsg LoginPage.Msg
+    = RegisterPageMsg RegisterPage.Msg
     | FeedsPageMsg FeedsPage.Msg
     | PostsPageMsg PostsPage.Msg
     | NewFeedPageMsg NewFeedPage.Msg
@@ -171,18 +181,18 @@ update msg model =
         ( DrawerMsg subMsg, _ ) ->
             ( { model | drawer = Drawer.update subMsg model.drawer }, Cmd.none )
 
-        ( LoginPageMsg subMsg, LoginPage subModel ) ->
+        ( RegisterPageMsg subMsg, RegisterPage subModel ) ->
             let
                 ( updatedPageModel, updatedCmd, outMsg ) =
-                    LoginPage.update subMsg subModel
+                    RegisterPage.update subMsg subModel
 
                 updatedModel =
-                    { model | page = LoginPage updatedPageModel }
+                    { model | page = RegisterPage updatedPageModel }
 
                 ( updatedSignalModel, moreCmd ) =
-                    processSignal updatedModel (LoginPageSignal outMsg)
+                    processSignal updatedModel (RegisterPageSignal outMsg)
             in
-            ( updatedSignalModel, Cmd.batch [ Cmd.map LoginPageMsg updatedCmd, moreCmd ] )
+            ( updatedSignalModel, Cmd.batch [ Cmd.map RegisterPageMsg updatedCmd, moreCmd ] )
 
         ( FeedsPageMsg subMsg, FeedsPage subModel ) ->
             let
@@ -216,16 +226,17 @@ update msg model =
 
 
 type SignalFromChild
-    = LoginPageSignal (Maybe LoginPage.OutMsg)
+    = RegisterPageSignal (Maybe RegisterPage.OutMsg)
     | NewFeedPageSignal (Maybe NewFeedPage.OutMsg)
 
 
 processSignal : Model -> SignalFromChild -> ( Model, Cmd Msg )
 processSignal model signal =
     case signal of
-        LoginPageSignal (Just (LoggedIn { apiKey })) ->
-            ( { model | apiKey = Just apiKey }, Cmd.batch [ storeApiKey apiKey, Nav.pushUrl model.navKey "/" ] )
+        RegisterPageSignal (Just RegisterSuccess) ->
+            ( model, Cmd.batch [ Nav.pushUrl model.navKey "/login" ] )
 
+        -- ( { model | accessToken = Just accessToken }, Cmd.batch [ storeAccessToken accessToken, Nav.pushUrl model.navKey "/" ] )
         NewFeedPageSignal (Just (CreatedFeed _)) ->
             ( model, Nav.pushUrl model.navKey "/" )
 
@@ -296,9 +307,9 @@ currentView model =
         NotFoundPage ->
             notFoundView
 
-        LoginPage pageModel ->
-            Lazy.lazy LoginPage.view pageModel
-                |> Html.map LoginPageMsg
+        RegisterPage pageModel ->
+            Lazy.lazy RegisterPage.view pageModel
+                |> Html.map RegisterPageMsg
 
         FeedsPage pageModel ->
             Lazy.lazy FeedsPage.view pageModel

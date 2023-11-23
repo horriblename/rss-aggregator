@@ -1,4 +1,4 @@
-module Page.Login exposing (Model, Msg, OutMsg(..), init, update, view)
+module Page.Register exposing (Model, Msg, OutMsg(..), init, update, view)
 
 import Common exposing (Resource(..), errorBox, padContent)
 import Html exposing (..)
@@ -13,23 +13,27 @@ import User exposing (User, registerUser)
 
 type alias Model =
     { name : String
+    , password : String
+    , passwordConfirm : String
     , submitStatus : Maybe (Resource String ())
     }
 
 
 type Msg
     = OnInputName String
+    | OnInputPassword String
+    | OnInputPasswordConfirm String
     | Submit
-    | LoginResult (Result Http.Error User)
+    | RegisterResult (Result Http.Error User)
 
 
 type OutMsg
-    = LoggedIn { apiKey : String }
+    = RegisterSuccess
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { name = "", submitStatus = Nothing }, Cmd.none )
+    ( { name = "", password = "", passwordConfirm = "", submitStatus = Nothing }, Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg, Maybe OutMsg )
@@ -38,16 +42,26 @@ update msg model =
         OnInputName name ->
             ( { model | name = name }, Cmd.none, Nothing )
 
+        OnInputPassword pw ->
+            ( { model | password = pw }, Cmd.none, Nothing )
+
+        OnInputPasswordConfirm pw ->
+            ( { model | passwordConfirm = pw }, Cmd.none, Nothing )
+
         Submit ->
-            ( model, registerUser model.name LoginResult, Nothing )
+            if model.password == model.passwordConfirm then
+                ( model, registerUser model.name RegisterResult, Nothing )
 
-        LoginResult (Ok user) ->
-            ( model, Cmd.none, Just <| LoggedIn { apiKey = user.apiKey } )
+            else
+                ( { model | submitStatus = Loaded "Passwords do not match." }, Cmd.none )
 
-        LoginResult (Err (Http.BadStatus status)) ->
+        RegisterResult (Ok user) ->
+            ( model, Cmd.none, Just <| RegisterSuccess )
+
+        RegisterResult (Err (Http.BadStatus status)) ->
             ( { model | submitStatus = Just <| Failed <| "Something went wrong: status code " ++ String.fromInt status }, Cmd.none, Nothing )
 
-        LoginResult (Err _) ->
+        RegisterResult (Err _) ->
             ( { model | submitStatus = Just <| Failed "Something went wrong" }, Cmd.none, Nothing )
 
 
@@ -74,6 +88,18 @@ view model =
                     |> TextField.setLabel (Just "Name")
                     |> TextField.setOnInput OnInputName
                     |> TextField.setPlaceholder (Just "John")
+                )
+            , TextField.filled
+                (TextField.config
+                    |> TextField.setLabel (Just "Password")
+                    |> TextField.setType (Just "password")
+                    |> TextField.setOnInput OnInputPassword
+                )
+            , TextField.filled
+                (TextField.config
+                    |> TextField.setLabel (Just "Password Confirm")
+                    |> TextField.setType (Just "password")
+                    |> TextField.setOnInput OnInputPasswordConfirm
                 )
             ]
         , div [ padContent, style "text-align" "right" ]
