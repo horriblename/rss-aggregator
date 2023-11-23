@@ -5,4 +5,4 @@ DEFAULT encode(sha256(random()::TEXT::BYTEA), 'hex');
 
 -- +goose Down
 ALTER TABLE users
-DROP COLUMN apikey
+DROP COLUMN apikey;

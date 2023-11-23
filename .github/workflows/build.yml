@@ -1,6 +1,5 @@
 name: "Build packages"
-on:
-  pull_request:
+on: [push, pull_request, workflow_dispatch]
 jobs:
   nix-build:
     runs-on: ubuntu-latest
@@ -8,5 +7,5 @@ jobs:
       - uses: actions/checkout@v3
       - uses: cachix/install-nix-action@v22
       - run: nix build .#default
-      - run: nix build .#webclient
+      - run: nix build .#rss-aggre-webclient
       - run: nix flake check

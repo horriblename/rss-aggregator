@@ -1,6 +1,6 @@
-module Page.Login exposing (Model, Msg, OutMsg(..), init, update, view)
+module Page.Register exposing (Model, Msg, OutMsg(..), init, update, view)
 
-import Common exposing (ApiRequestError(..), Resource(..), errorBox, padContent)
+import Common exposing (Resource(..), errorBox, padContent)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
@@ -8,12 +8,13 @@ import Http
 import Material.Button as Button
 import Material.Elevation as Elevation
 import Material.TextField as TextField
-import User exposing (UserTokens, loginUser)
+import User exposing (User, registerUser)
 
 
 type alias Model =
     { name : String
     , password : String
+    , passwordConfirm : String
     , submitStatus : Maybe (Resource String ())
     }
 
@@ -21,17 +22,18 @@ type alias Model =
 type Msg
     = OnInputName String
     | OnInputPassword String
+    | OnInputPasswordConfirm String
     | Submit
-    | LoginResult (Result ApiRequestError UserTokens)
+    | RegisterResult (Result Http.Error User)
 
 
 type OutMsg
-    = LoggedIn UserTokens
+    = RegisterSuccess
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { name = "", password = "", submitStatus = Nothing }, Cmd.none )
+    ( { name = "", password = "", passwordConfirm = "", submitStatus = Nothing }, Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg, Maybe OutMsg )
@@ -43,22 +45,26 @@ update msg model =
         OnInputPassword pw ->
             ( { model | password = pw }, Cmd.none, Nothing )
 
+        OnInputPasswordConfirm pw ->
+            ( { model | passwordConfirm = pw }, Cmd.none, Nothing )
+
         Submit ->
-            ( { model | submitStatus = Just Loading }
-            , loginUser { name = model.name, password = model.password } LoginResult
-            , Nothing
-            )
+            if model.password == model.passwordConfirm then
+                ( { model | submitStatus = Just Loading }
+                , registerUser { name = model.name, password = model.password } RegisterResult
+                , Nothing
+                )
 
-        LoginResult (Ok tokens) ->
-            ( model, Cmd.none, Just <| LoggedIn tokens )
+            else
+                ( { model | submitStatus = Just (Failed "Passwords do not match.") }, Cmd.none, Nothing )
 
-        LoginResult (Err (Unhandled (Http.BadStatus status))) ->
+        RegisterResult (Ok _) ->
+            ( model, Cmd.none, Just <| RegisterSuccess )
+
+        RegisterResult (Err (Http.BadStatus status)) ->
             ( { model | submitStatus = Just <| Failed <| "Something went wrong: status code " ++ String.fromInt status }, Cmd.none, Nothing )
 
-        LoginResult (Err (BadStatus _ errMsg)) ->
-            ( { model | submitStatus = Just <| Failed <| "Error: " ++ errMsg }, Cmd.none, Nothing )
-
-        LoginResult (Err _) ->
+        RegisterResult (Err _) ->
             ( { model | submitStatus = Just <| Failed "Something went wrong" }, Cmd.none, Nothing )
 
 
@@ -88,13 +94,13 @@ view model =
         , style "height" "100%"
         ]
         [ div [ Elevation.z12, padContent ]
-            [ div [ padContent ] [ h1 [] [ text "Login" ] ]
+            [ div [ padContent ] [ h1 [] [ text "Register" ] ]
             , viewError model.submitStatus
             , div []
                 [ wrapDiv <|
                     TextField.filled
                         (TextField.config
-                            |> TextField.setLabel (Just "Name")
+                            |> TextField.setLabel (Just "Username")
                             |> TextField.setOnInput OnInputName
                             |> TextField.setPlaceholder (Just "John")
                         )
@@ -104,6 +110,13 @@ view model =
                             |> TextField.setLabel (Just "Password")
                             |> TextField.setType (Just "password")
                             |> TextField.setOnInput OnInputPassword
+                        )
+                , wrapDiv <|
+                    TextField.filled
+                        (TextField.config
+                            |> TextField.setLabel (Just "Confirm Password")
+                            |> TextField.setType (Just "password")
+                            |> TextField.setOnInput OnInputPasswordConfirm
                         )
                 ]
             , div [ padContent, style "text-align" "right" ]

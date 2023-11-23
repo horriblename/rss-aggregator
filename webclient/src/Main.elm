@@ -1,9 +1,10 @@
-port module Main exposing (main, storeApiKey)
+port module Main exposing (main, storeAccessToken)
 
 -- import Browser.Navigation as Nav
 
 import Browser exposing (Document, UrlRequest)
 import Browser.Navigation as Nav
+import Common exposing (Resource(..), refreshAccessToken)
 import Drawer
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -14,6 +15,7 @@ import Material.TopAppBar as TopAppBar
 import Material.Typography exposing (typography)
 import Page.Login as LoginPage exposing (OutMsg(..))
 import Page.NewFeed as NewFeedPage exposing (OutMsg(..))
+import Page.Register as RegisterPage exposing (OutMsg(..))
 import Page.ViewFeeds as FeedsPage
 import Page.ViewPosts as PostsPage
 import Platform.Cmd as Cmd
@@ -43,7 +45,8 @@ main =
 
 
 type alias Model =
-    { apiKey : Maybe String
+    { accessToken : Maybe String
+    , refreshToken : Maybe String
     , posts : List Post
     , route : Route
     , page : Page
@@ -54,6 +57,8 @@ type alias Model =
 
 type Page
     = NotFoundPage
+    | RegisterPage RegisterPage.Model
+    | LoadingPage (Resource String Page)
     | LoginPage LoginPage.Model
     | FeedsPage FeedsPage.Model
     | PostsPage PostsPage.Model
@@ -61,14 +66,17 @@ type Page
 
 
 type alias Flags =
-    { apiKey : Maybe String }
+    { accessToken : Maybe String
+    , refreshToken : Maybe String
+    }
 
 
 init : Flags -> Url -> Nav.Key -> ( Model, Cmd Msg )
 init flags url navKey =
     let
         model =
-            { apiKey = flags.apiKey
+            { accessToken = flags.accessToken
+            , refreshToken = flags.refreshToken
             , posts = []
             , route = Route.parseUrl url
             , page = NotFoundPage
@@ -89,6 +97,13 @@ initCurrentPage ( model, exisitngCmds ) =
 
                 Route.Posts ->
                     initAuthedPage PostsPage.init model PostsPage PostsPageMsg
+
+                Route.Register ->
+                    let
+                        ( pageModel, pageCmds ) =
+                            RegisterPage.init ()
+                    in
+                    ( RegisterPage pageModel, Cmd.map RegisterPageMsg pageCmds )
 
                 Route.Login ->
                     let
@@ -114,23 +129,30 @@ type alias Init a model msg =
 
 initAuthedPage : Init String model msg -> Model -> (model -> Page) -> (msg -> Msg) -> ( Page, Cmd Msg )
 initAuthedPage pageInit model toModel toMsg =
-    case model.apiKey of
-        Nothing ->
-            ( NotFoundPage, Nav.pushUrl model.navKey "/login" )
+    case ( model.accessToken, model.refreshToken ) of
+        ( Nothing, Nothing ) ->
+            ( NotFoundPage, Nav.pushUrl model.navKey "/register" )
 
-        Just apiKey ->
+        ( Just accToken, _ ) ->
             let
                 ( pageModel, pageCmds ) =
-                    pageInit apiKey
+                    pageInit accToken
             in
             ( toModel pageModel, Cmd.map toMsg pageCmds )
+
+        ( Nothing, Just _ ) ->
+            -- FIXME: refresh token
+            ( LoadingPage Loading, Cmd.none )
 
 
 
 -- PORTS
 
 
-port storeApiKey : String -> Cmd msg
+port storeAccessToken : String -> Cmd msg
+
+
+port storeRefreshToken : String -> Cmd msg
 
 
 
@@ -138,7 +160,8 @@ port storeApiKey : String -> Cmd msg
 
 
 type Msg
-    = LoginPageMsg LoginPage.Msg
+    = RegisterPageMsg RegisterPage.Msg
+    | LoginPageMsg LoginPage.Msg
     | FeedsPageMsg FeedsPage.Msg
     | PostsPageMsg PostsPage.Msg
     | NewFeedPageMsg NewFeedPage.Msg
@@ -170,6 +193,19 @@ update msg model =
 
         ( DrawerMsg subMsg, _ ) ->
             ( { model | drawer = Drawer.update subMsg model.drawer }, Cmd.none )
+
+        ( RegisterPageMsg subMsg, RegisterPage subModel ) ->
+            let
+                ( updatedPageModel, updatedCmd, outMsg ) =
+                    RegisterPage.update subMsg subModel
+
+                updatedModel =
+                    { model | page = RegisterPage updatedPageModel }
+
+                ( updatedSignalModel, moreCmd ) =
+                    processSignal updatedModel (RegisterPageSignal outMsg)
+            in
+            ( updatedSignalModel, Cmd.batch [ Cmd.map RegisterPageMsg updatedCmd, moreCmd ] )
 
         ( LoginPageMsg subMsg, LoginPage subModel ) ->
             let
@@ -216,16 +252,27 @@ update msg model =
 
 
 type SignalFromChild
-    = LoginPageSignal (Maybe LoginPage.OutMsg)
+    = RegisterPageSignal (Maybe RegisterPage.OutMsg)
+    | LoginPageSignal (Maybe LoginPage.OutMsg)
     | NewFeedPageSignal (Maybe NewFeedPage.OutMsg)
 
 
 processSignal : Model -> SignalFromChild -> ( Model, Cmd Msg )
 processSignal model signal =
     case signal of
-        LoginPageSignal (Just (LoggedIn { apiKey })) ->
-            ( { model | apiKey = Just apiKey }, Cmd.batch [ storeApiKey apiKey, Nav.pushUrl model.navKey "/" ] )
+        RegisterPageSignal (Just RegisterSuccess) ->
+            ( model, Cmd.batch [ Nav.pushUrl model.navKey "/login" ] )
 
+        LoginPageSignal (Just (LoggedIn { accessToken, refreshToken })) ->
+            ( { model | accessToken = Just accessToken, refreshToken = Just refreshToken }
+            , Cmd.batch
+                [ Nav.pushUrl model.navKey "/"
+                , storeAccessToken accessToken
+                , storeRefreshToken refreshToken
+                ]
+            )
+
+        -- ( { model | accessToken = Just accessToken }, Cmd.batch [ storeAccessToken accessToken, Nav.pushUrl model.navKey "/" ] )
         NewFeedPageSignal (Just (CreatedFeed _)) ->
             ( model, Nav.pushUrl model.navKey "/" )
 
@@ -247,7 +294,15 @@ view model =
             , Drawer.scrim
             , Html.div [ style "width" "100%" ]
                 [ Lazy.lazy viewTopBar model.drawer.open
-                , Html.div [ TopAppBar.fixedAdjust ] [ currentView model ]
+                , Html.div
+                    [ TopAppBar.fixedAdjust
+
+                    -- HACK: I want the main content to cover 100% height, but I don't want
+                    -- the scrollbar to show up due to vertical offset by the top app bar
+                    -- so I settled for this instead
+                    , style "height" "90vh"
+                    ]
+                    [ currentView model ]
                 ]
             ]
         ]
@@ -296,6 +351,13 @@ currentView model =
         NotFoundPage ->
             notFoundView
 
+        LoadingPage _ ->
+            viewLoading
+
+        RegisterPage pageModel ->
+            Lazy.lazy RegisterPage.view pageModel
+                |> Html.map RegisterPageMsg
+
         LoginPage pageModel ->
             Lazy.lazy LoginPage.view pageModel
                 |> Html.map LoginPageMsg
@@ -316,6 +378,11 @@ currentView model =
 notFoundView : Html Msg
 notFoundView =
     text "Page Not Found"
+
+
+viewLoading : Html Msg
+viewLoading =
+    text "Loading..."
 
 
 

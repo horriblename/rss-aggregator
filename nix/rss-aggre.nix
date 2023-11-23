@@ -18,7 +18,7 @@ in
 
     inherit src;
 
-    vendorHash = "sha256-lX+5edOBfwmuik8C3+OPLlizR3iDg7VK+Ov0gh4BRM8=";
+    vendorHash = "sha256-xtmd0V/YkxR9LHhml/Mrefuv+Ym19FiTYlmRh7aHK2A=";
 
     outputs = ["out"];
 

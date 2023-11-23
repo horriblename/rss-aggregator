@@ -37,14 +37,16 @@ push-goose:
 	$(DOCKER_CMD) push horriblename/goose:latest
 
 push-rss-aggre:
-	nix build .\#dockerImage
+	nix build .\#dockerStream
 	./result | $(DOCKER_CMD) load
 	$(DOCKER_CMD) push horriblename/rss-aggre:latest
 
 # Development niceties
 # --------------------
+#
+# .env file is expected to be loaded BEFORE using any of these commands
 
-.PHONY: stop watch all test compose compose-rebuild
+.PHONY: stop watch all test compose compose-rebuild migrate-db
 
 pidfile: build/server
 	$(MAKE) stop
@@ -65,3 +67,6 @@ compose:
 	
 compose-rebuild:
 	cd deploy && ./up.sh
+
+migrate-db:
+	cd ./sql/schema && goose postgres "$$DATABASE_URL" up

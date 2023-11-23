@@ -13,16 +13,17 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (id, created_at, updated_at, name)
-VALUES ($1, $2, $3, $4)
-RETURNING id, created_at, updated_at, name, apikey
+INSERT INTO users (id, created_at, updated_at, name, passwordHash)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, created_at, updated_at, name, apikey, passwordhash
 `
 
 type CreateUserParams struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Name      string    `json:"name"`
+	ID           uuid.UUID `json:"id"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+	Name         string    `json:"name"`
+	Passwordhash []byte    `json:"passwordhash"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -31,6 +32,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		arg.CreatedAt,
 		arg.UpdatedAt,
 		arg.Name,
+		arg.Passwordhash,
 	)
 	var i User
 	err := row.Scan(
@@ -39,12 +41,23 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.UpdatedAt,
 		&i.Name,
 		&i.Apikey,
+		&i.Passwordhash,
 	)
 	return i, err
 }
 
+const deleteUser = `-- name: DeleteUser :exec
+DELETE FROM users
+WHERE id = $1
+`
+
+func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteUser, id)
+	return err
+}
+
 const getUser = `-- name: GetUser :one
-SELECT id, created_at, updated_at, name, apikey
+SELECT id, created_at, updated_at, name, apikey, passwordhash
 FROM users
 WHERE apikey = $1
 LIMIT 1
@@ -59,6 +72,49 @@ func (q *Queries) GetUser(ctx context.Context, apikey string) (User, error) {
 		&i.UpdatedAt,
 		&i.Name,
 		&i.Apikey,
+		&i.Passwordhash,
+	)
+	return i, err
+}
+
+const getUserFromID = `-- name: GetUserFromID :one
+SELECT id, created_at, updated_at, name, apikey, passwordhash
+FROM users
+WHERE id = $1
+LIMIT 1
+`
+
+func (q *Queries) GetUserFromID(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserFromID, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Name,
+		&i.Apikey,
+		&i.Passwordhash,
+	)
+	return i, err
+}
+
+const getUserFromName = `-- name: GetUserFromName :one
+SELECT id, created_at, updated_at, name, apikey, passwordhash
+FROM users
+WHERE name = $1
+LIMIT 1
+`
+
+func (q *Queries) GetUserFromName(ctx context.Context, name string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserFromName, name)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Name,
+		&i.Apikey,
+		&i.Passwordhash,
 	)
 	return i, err
 }
