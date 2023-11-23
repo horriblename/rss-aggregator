@@ -1,7 +1,10 @@
-module Common exposing (Resource(..), errorBox, padContent)
+module Common exposing (ApiRequestError(..), Resource(..), errorBox, expectApiJson, padContent)
 
 import Html exposing (Html)
 import Html.Attributes exposing (style)
+import Http
+import Json.Decode as Decode exposing (Decoder, string)
+import Json.Decode.Pipeline exposing (required)
 
 
 type Resource err a
@@ -23,3 +26,50 @@ errorBox err =
 padContent : Html.Attribute msg
 padContent =
     style "padding" "1rem"
+
+
+type alias ErrorMsg =
+    { error : String }
+
+
+apiErrorDecoder : Decoder ErrorMsg
+apiErrorDecoder =
+    Decode.succeed ErrorMsg
+        |> required "error" string
+
+
+type ApiRequestError
+    = Unhandled Http.Error
+    | BadStatus Int String
+    | BadStatusAndBody Int
+
+
+expectApiJson : (Result ApiRequestError a -> msg) -> Decode.Decoder a -> Http.Expect msg
+expectApiJson toMsg decoder =
+    Http.expectStringResponse toMsg <|
+        \response ->
+            case response of
+                Http.BadUrl_ url ->
+                    Err (Unhandled <| Http.BadUrl url)
+
+                Http.Timeout_ ->
+                    Err <| Unhandled <| Http.Timeout
+
+                Http.NetworkError_ ->
+                    Err <| Unhandled <| Http.NetworkError
+
+                Http.BadStatus_ metadata body ->
+                    case Decode.decodeString apiErrorDecoder body of
+                        Ok value ->
+                            Err <| BadStatus metadata.statusCode value.error
+
+                        Err _ ->
+                            Err <| BadStatusAndBody metadata.statusCode
+
+                Http.GoodStatus_ _ body ->
+                    case Decode.decodeString decoder body of
+                        Ok value ->
+                            Ok value
+
+                        Err err ->
+                            Err <| Unhandled <| Http.BadBody (Decode.errorToString err)

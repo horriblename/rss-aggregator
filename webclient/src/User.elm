@@ -1,6 +1,7 @@
-module User exposing (User, loginUser, registerUser)
+module User exposing (User, UserTokens, loginUser, registerUser)
 
 import ApiUrl exposing (apiBaseUrl)
+import Common exposing (ApiRequestError, expectApiJson)
 import Http exposing (jsonBody)
 import Json.Decode as Decode exposing (Decoder, string)
 import Json.Decode.Pipeline exposing (required)
@@ -60,10 +61,17 @@ userTokensDecoder =
         |> required "refresh_token" string
 
 
-loginUser : RegisterData -> (Result Http.Error UserTokens -> msg) -> Cmd msg
+
+-- -- Update this function's type signature accordingly
+-- expectStringDetailed : (Result ErrorDetailed ( Metadata, String ) -> msg) -> Expect msg
+-- expectStringDetailed msg =
+-- Http.expectStringResponse msg convertResponseString
+
+
+loginUser : RegisterData -> (Result ApiRequestError UserTokens -> msg) -> Cmd msg
 loginUser loginData toMsg =
     Http.post
         { url = apiBaseUrl ++ "/v1/login"
         , body = jsonBody (encodeRegisterData loginData)
-        , expect = Http.expectJson toMsg userTokensDecoder
+        , expect = expectApiJson toMsg userTokensDecoder
         }
