@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -131,6 +132,7 @@ func v1Router(apiCfg apiConfig) chi.Router {
 	r.Post("/users", apiCfg.postUsers)
 	r.Delete("/users", apiCfg.deleteUsers)
 	r.Post("/login", apiCfg.postLogin)
+	r.Post("/refresh", apiCfg.postRefresh)
 	r.Post("/feeds", apiCfg.middlewareAuth(apiCfg.postFeeds))
 	r.Get("/feeds", apiCfg.getFeeds)
 	r.Post("/feed_follows", apiCfg.middlewareAuth(apiCfg.postFeedFollow))
@@ -168,24 +170,57 @@ func getErr(w http.ResponseWriter, r *http.Request) {
 func (cfg *apiConfig) middlewareAuth(handler authedHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		auth := r.Header.Get("Authorization")
-		api_key, found := strings.CutPrefix(auth, "ApiKey ")
-		if !found {
-			log.Print("attempt to get user with bad Authorization")
+		if strings.HasPrefix(auth, "ApiKey ") {
+			api_key := strings.TrimPrefix(auth, "ApiKey ")
+			user, err := cfg.queries.GetUser(cfg.ctx, api_key)
+			if err != nil {
+				if err == sql.ErrNoRows {
+					respondWithError(w, http.StatusUnauthorized, "Unrecognized API Key")
+					return
+				}
+				log.Printf("middlewareAuth db error: %s", err)
+				respondWithError(w, http.StatusInternalServerError, "Internal Server Error")
+				return
+			}
+
+			handler(w, r, user)
+		} else if strings.HasPrefix(auth, "Bearer ") {
+			token, err := cfg.validateJWT(r)
+			if err != nil {
+				if err == ErrUnauthorizedToken {
+					respondWithError(w, http.StatusUnauthorized, "Unauthorized Token")
+				} else {
+					respondWithError(w, http.StatusUnauthorized, "Bad Authorization Header")
+				}
+				return
+			}
+
+			subj, err := token.Claims.GetSubject()
+			if err != nil {
+				log.Printf("could not retrieve subject from valid JWT token: %s", err)
+				respondWithError(w, http.StatusUnauthorized, "Unauthorized")
+				return
+			}
+			user_id, err := uuid.Parse(subj)
+			if err != nil {
+				log.Printf("got invalid uuid as subject from valid JWT token(%s): %s", subj, err)
+				respondWithError(w, http.StatusUnauthorized, "Unauthorized")
+				return
+			}
+
+			user, err := cfg.queries.GetUserFromID(cfg.ctx, user_id)
+			if err != nil {
+				log.Printf("middlewareAuth get user from ID db error: %s", err)
+				respondWithError(w, http.StatusInternalServerError, "DB Error")
+				return
+			}
+
+			handler(w, r, user)
+		} else {
+			log.Printf("attempt to get user with bad Authorization: %s", auth)
 			respondWithError(w, http.StatusUnauthorized, "Missing or Bad Authorization in header")
 			return
 		}
-
-		user, err := cfg.queries.GetUser(cfg.ctx, api_key)
-		if err != nil {
-			if err == sql.ErrNoRows {
-				respondWithError(w, http.StatusUnauthorized, "Unrecognized API Key")
-				return
-			}
-			log.Printf("middlewareAuth db error: %s", err)
-			respondWithError(w, http.StatusInternalServerError, "Internal Server Error")
-			return
-		}
-		handler(w, r, user)
 	}
 }
 
@@ -344,19 +379,9 @@ func (cfg *apiConfig) postLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accessTokClaims := jwt.RegisteredClaims{
-		Issuer:    gAccessTokIssuer,
-		Subject:   user.ID.String(),
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(gAccessTokenExpiration)),
-		IssuedAt:  jwt.NewNumericDate(time.Now()),
-	}
+	accessTokClaims := newAccessTokenClaims(user.ID.String())
 
-	refreshTokClaims := jwt.RegisteredClaims{
-		Issuer:    gRefreshTokIssuer,
-		Subject:   user.ID.String(),
-		IssuedAt:  jwt.NewNumericDate(time.Now()),
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(gRefreshTokenExpiration)),
-	}
+	refreshTokClaims := newRefreshTokenClaims(user.ID.String())
 
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessTokClaims)
 	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshTokClaims)
@@ -380,6 +405,68 @@ func (cfg *apiConfig) postLogin(w http.ResponseWriter, r *http.Request) {
 		AccessToken:  accessTokStr,
 		RefreshToken: refreshTokStr,
 	}
+
+	respondWithJSON(w, http.StatusOK, resp)
+}
+
+func (cfg *apiConfig) postRefresh(w http.ResponseWriter, r *http.Request) {
+	token, err := cfg.validateJWT(r)
+	if err != nil {
+		if errors.Is(err, ErrUnauthorizedToken) {
+			respondWithError(w, http.StatusUnauthorized, "Invalid Token")
+		} else {
+			respondWithError(w, http.StatusUnauthorized, `Malformed "Authorization" in Header`)
+		}
+		return
+	}
+	auth := r.Header.Get("Authorization")
+
+	const prefix = "Bearer "
+	if !strings.HasPrefix(auth, prefix) {
+		respondWithError(w, http.StatusBadRequest, `Malformed "Authorization" in Header`)
+		return
+	}
+
+	tokStr := strings.TrimPrefix(auth, prefix)
+	if isRevoked, err := cfg.queries.TokenIsRevoked(cfg.ctx, tokStr); err != nil {
+		log.Printf("checking if token is revoked, db error: %s", err)
+		respondWithError(w, http.StatusInternalServerError, "DB Error")
+		return
+	} else if isRevoked == 1 {
+		respondWithError(w, http.StatusUnauthorized, "Invalid Token")
+		return
+	}
+
+	if issuer, err := token.Claims.GetIssuer(); err != nil {
+		log.Printf("valid JWT without issuer (%s)", tokStr)
+		respondWithError(w, http.StatusUnauthorized, "Could Not Get Issuer")
+		return
+	} else if issuer != gRefreshTokIssuer {
+		log.Printf("valid JWT wrong issuer (%s)", tokStr)
+		respondWithError(w, http.StatusUnauthorized, "Wrong Issuer")
+		return
+	}
+
+	subj, err := token.Claims.GetSubject()
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Could Not Get Subject")
+		return
+	}
+
+	accessTokClaims := newAccessTokenClaims(subj)
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessTokClaims)
+
+	accessTokStr, err := accessToken.SignedString(cfg.jwtSecret)
+	if err != nil {
+		log.Printf("secret: %v", cfg.jwtSecret)
+		log.Printf("signing JWT token: %s", err)
+		respondWithError(w, http.StatusInternalServerError, "Internal Error")
+		return
+	}
+
+	resp := struct {
+		Token string `json:"token"`
+	}{accessTokStr}
 
 	respondWithJSON(w, http.StatusOK, resp)
 }
@@ -593,6 +680,58 @@ func (cfg *apiConfig) getPosts(w http.ResponseWriter, r *http.Request, user data
 	}
 
 	respondWithJSON(w, http.StatusOK, postsJSON)
+}
+
+// returns ErrBadAuthHeader for malformed "Authorization" headers
+//
+// returns a possibly wrapped ErrUnauthorizedToken if the token is not valid (expired/invalid signature)
+//
+// forwards any other jwt.Err*
+func (cfg *apiConfig) validateJWT(req *http.Request) (*jwt.Token, error) {
+	// header format:
+	//	  Authorization: Bearer <token>
+	auth := req.Header.Get("Authorization")
+
+	const prefix = "Bearer "
+	if !strings.HasPrefix(auth, prefix) {
+		return nil, ErrBadAuthHeader
+	}
+	tokStr := strings.TrimPrefix(auth, prefix)
+	claims := jwt.RegisteredClaims{}
+
+	token, err := jwt.ParseWithClaims(tokStr, &claims, func(token *jwt.Token) (interface{}, error) {
+		return cfg.jwtSecret, nil
+	})
+	if err != nil {
+		if err == jwt.ErrSignatureInvalid {
+			return nil, fmt.Errorf("%w: Invalid Signature", ErrUnauthorizedToken)
+		}
+		return nil, fmt.Errorf("parsing JWT token: %w\n", err)
+	}
+
+	if !token.Valid {
+		return nil, ErrUnauthorizedToken
+	}
+
+	return token, nil
+}
+
+func newAccessTokenClaims(subject string) jwt.RegisteredClaims {
+	return jwt.RegisteredClaims{
+		Issuer:    gAccessTokIssuer,
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(gAccessTokenExpiration)),
+		Subject:   subject,
+	}
+}
+
+func newRefreshTokenClaims(subject string) jwt.RegisteredClaims {
+	return jwt.RegisteredClaims{
+		Issuer:    gRefreshTokIssuer,
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(gRefreshTokenExpiration)),
+		Subject:   subject,
+	}
 }
 
 // Ignores an error and uses a specified value instead
