@@ -28,6 +28,11 @@ in {
       default = 12080;
     };
 
+    jwtSecretFile = lib.mkOption {
+      description = "File containing JWT secret";
+      type = types.path;
+    };
+
     postgres = {
       # user = lib.mkOption {
       #   description = "Postgres Database user";
@@ -100,6 +105,7 @@ in {
         environment = {
           PORT = toString cfg.port;
           DATABASE_URL = connString;
+          JWT_SECRET_FILE = cfg.jwtSecretFile;
         };
 
         path = [cfg.package];
