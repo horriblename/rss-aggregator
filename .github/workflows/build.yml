@@ -1,6 +1,5 @@
 name: "Build packages"
-on:
-  pull_request:
+on: [push, pull_request, workflow_dispatch]
 jobs:
   nix-build:
     runs-on: ubuntu-latest
