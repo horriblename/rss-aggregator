@@ -25,10 +25,10 @@ feedDecoder =
 
 
 fetchFeeds : String -> (Result Http.Error (List Feed) -> msg) -> Cmd msg
-fetchFeeds apiKey toMsg =
+fetchFeeds accessToken toMsg =
     Http.request
         { method = "GET"
-        , headers = [ header "Authorization" <| "ApiKey " ++ apiKey ]
+        , headers = [ header "Authorization" <| "Bearer " ++ accessToken ]
         , url = apiBaseUrl ++ "/v1/feeds?follows=1"
         , body = Http.emptyBody
         , expect = Http.expectJson toMsg (list feedDecoder)
@@ -50,10 +50,10 @@ encodeCreateFeedParams params =
 
 
 createFeed : String -> (Result Http.Error Feed -> msg) -> CreateFeedParams -> Cmd msg
-createFeed apiKey toMsg params =
+createFeed accessToken toMsg params =
     Http.request
         { method = "POST"
-        , headers = [ header "Authorization" <| "ApiKey " ++ apiKey ]
+        , headers = [ header "Authorization" <| "Bearer " ++ accessToken ]
         , url = apiBaseUrl ++ "/v1/feeds"
         , body = Http.jsonBody (encodeCreateFeedParams params)
         , expect = Http.expectJson toMsg feedDecoder
@@ -79,7 +79,7 @@ type alias FetchFollows =
 
 
 fetchFollows : String -> (Result Http.Error (List UUID) -> msg) -> Cmd msg
-fetchFollows apiKey toMsg =
+fetchFollows accessToken toMsg =
     let
         decoder =
             Decode.succeed FetchFollows
@@ -87,7 +87,7 @@ fetchFollows apiKey toMsg =
     in
     Http.request
         { method = "GET"
-        , headers = [ header "Authorization" <| "ApiKey " ++ apiKey ]
+        , headers = [ header "Authorization" <| "Bearer " ++ accessToken ]
         , url = apiBaseUrl ++ "/v1/feeds"
         , body = Http.emptyBody
         , expect = Http.expectJson toMsg (Decode.map (List.map .id) (list decoder))
@@ -110,14 +110,14 @@ decodeFeedFollow =
 
 
 followFeed : String -> String -> (Result Http.Error FeedFollow -> msg) -> Cmd msg
-followFeed apiKey feedID toMsg =
+followFeed accessKey feedID toMsg =
     let
         params =
             Encode.object [ ( "feed_id", Encode.string feedID ) ]
     in
     Http.request
         { method = "POST"
-        , headers = [ header "Authorization" <| "ApiKey " ++ apiKey ]
+        , headers = [ header "Authorization" <| "Bearer " ++ accessKey ]
         , url = apiBaseUrl ++ "/v1/feed_follows"
         , body = Http.jsonBody params
         , expect = Http.expectJson toMsg decodeFeedFollow
@@ -127,10 +127,10 @@ followFeed apiKey feedID toMsg =
 
 
 unfollowFeed : String -> String -> (Result Http.Error () -> msg) -> Cmd msg
-unfollowFeed apiKey followID toMsg =
+unfollowFeed accessKey followID toMsg =
     Http.request
         { method = "DELETE"
-        , headers = [ header "Authorization" <| "ApiKey " ++ apiKey ]
+        , headers = [ header "Authorization" <| "Bearer " ++ accessKey ]
         , url = apiBaseUrl ++ "/v1/feed_follows/" ++ followID
         , body = Http.emptyBody
         , expect = Http.expectWhatever toMsg

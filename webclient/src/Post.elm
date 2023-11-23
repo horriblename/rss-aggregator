@@ -62,10 +62,10 @@ postDecoder =
 
 
 fetchPosts : String -> Int -> (Result Http.Error (List Post) -> msg) -> Cmd msg
-fetchPosts apiKey offset toMsg =
+fetchPosts accessToken offset toMsg =
     Http.request
         { method = "GET"
-        , headers = [ header "Authorization" <| "ApiKey " ++ apiKey ]
+        , headers = [ header "Authorization" <| "Bearer " ++ accessToken ]
         , url = apiBaseUrl ++ "/v1/posts?limit=20&offset=" ++ String.fromInt offset
         , body = Http.emptyBody
         , expect = Http.expectJson toMsg (list postDecoder)
