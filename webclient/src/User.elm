@@ -1,9 +1,10 @@
 module User exposing (User, registerUser)
 
 import ApiUrl exposing (apiBaseUrl)
-import Http exposing (stringBody)
+import Http exposing (jsonBody)
 import Json.Decode as Decode exposing (Decoder, string)
-import Json.Decode.Pipeline exposing (hardcoded, optional, required)
+import Json.Decode.Pipeline exposing (required)
+import Json.Encode as Encode
 
 
 
@@ -27,10 +28,22 @@ userDecoder =
 -- registerUserDataEncoder : Encoder RegisterUserData
 
 
-registerUser : String -> (Result Http.Error User -> msg) -> Cmd msg
-registerUser name toMsg =
+type alias RegisterData =
+    { name : String, password : String }
+
+
+encodeRegisterData : RegisterData -> Encode.Value
+encodeRegisterData data =
+    Encode.object
+        [ ( "name", Encode.string data.name )
+        , ( "password", Encode.string data.password )
+        ]
+
+
+registerUser : RegisterData -> (Result Http.Error User -> msg) -> Cmd msg
+registerUser regData toMsg =
     Http.post
         { url = apiBaseUrl ++ "/v1/users"
-        , body = stringBody "application/json" ("{\"name\": \"" ++ name ++ "\"}")
+        , body = jsonBody (encodeRegisterData regData)
         , expect = Http.expectJson toMsg userDecoder
         }
