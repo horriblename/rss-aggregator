@@ -660,7 +660,6 @@ func (cfg *apiConfig) getPosts(w http.ResponseWriter, r *http.Request, user data
 	}
 
 	query := r.URL.Query()
-	log.Printf("queies: %+v", query)
 	args := getPostsArgs{
 		limit:  unwrapOr(strconv.Atoi(query.Get("limit")))(gGetPostDefaultLimit),
 		offset: unwrapOr(strconv.Atoi(query.Get("offset")))(0),
@@ -669,8 +668,6 @@ func (cfg *apiConfig) getPosts(w http.ResponseWriter, r *http.Request, user data
 	if args.limit <= 0 {
 		args.limit = gGetPostDefaultLimit
 	}
-
-	log.Printf("getPosts args: %+v", args)
 
 	posts, err := cfg.queries.GetPostsByUser(cfg.ctx, database.GetPostsByUserParams{
 		UserID: user.ID,
