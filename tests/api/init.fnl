@@ -40,13 +40,11 @@
         :asserts [status-ok #(= $1.body.name dummy-user.name)]
         :scripts [#(set api-key (assert $1.body.apikey))]})
 
-  (print "pre defer")
   (defer #(test "Cleanup user"
                 :DELETE
                 (endpoint :v1/users)
                 {:body dummy-user
                 :asserts [status-ok]}))
-  (print "post defer")
 
   (local authed_header (header :Authorization (f "ApiKey %s" api-key)))
 
@@ -65,6 +63,8 @@
         :asserts [status-ok]
         :scripts [#(set access-token (assert $1.body.access_token))
                   #(set refresh-token (assert $1.body.refresh_token)) ]})
+
+  (local access-token-header (header :Authorization (f "Bearer %s" access-token)))
 
   (var feed_id nil)
   (test "POST feeds: create feed"
@@ -105,7 +105,19 @@
         (endpoint :v1/feed_follows)
         {:headers [authed_header]
         :asserts [status-ok
-                   #(= (type $.body) "table")]}))
+                   #(= (type $.body) "table")]})
+
+  (test "Test Access Token"
+        :GET
+        (endpoint :v1/feed_follows)
+        {:headers [access-token-header]
+        :asserts [status-ok #(= (type $.body) "table")]})
+
+  (test "Refresh access token"
+        :POST
+        (endpoint :v1/refresh)
+        {:headers [(header :Authorization (f "Bearer %s" refresh-token))]
+        :asserts [status-ok #$.body.token]}))
 
 (let [(ok err) (pcall test-api)]
   (run-defers)
