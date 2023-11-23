@@ -51,6 +51,7 @@ type apiConfig struct {
 	db        *sql.DB
 	jwtSecret []byte
 	ctx       context.Context
+	newFeed   chan database.Feed
 }
 
 type authedHandler func(http.ResponseWriter, *http.Request, database.User)
@@ -101,7 +102,10 @@ func main() {
 
 		jwtSecret = string(secret)
 	}
-	apiCfg := apiConfig{database.New(db), db, []byte(jwtSecret), context.Background()}
+	apiCfg := apiConfig{
+		database.New(db), db, []byte(jwtSecret), context.Background(),
+		make(chan database.Feed),
+	}
 
 	go fetchFeedLoop(apiCfg)
 
@@ -538,6 +542,8 @@ func (cfg *apiConfig) postFeeds(w http.ResponseWriter, r *http.Request, user dat
 		respondWithError(w, http.StatusInternalServerError, "DB Error")
 		return
 	}
+
+	cfg.newFeed <- feed
 
 	respondWithJSON(w, http.StatusOK, &feed)
 }
