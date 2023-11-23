@@ -50,12 +50,15 @@ update msg model =
 
         Submit ->
             if model.password == model.passwordConfirm then
-                ( model, registerUser model.name RegisterResult, Nothing )
+                ( { model | submitStatus = Just Loading }
+                , registerUser { name = model.name, password = model.password } RegisterResult
+                , Nothing
+                )
 
             else
-                ( { model | submitStatus = Loaded "Passwords do not match." }, Cmd.none )
+                ( { model | submitStatus = Just (Failed "Passwords do not match.") }, Cmd.none, Nothing )
 
-        RegisterResult (Ok user) ->
+        RegisterResult (Ok _) ->
             ( model, Cmd.none, Just <| RegisterSuccess )
 
         RegisterResult (Err (Http.BadStatus status)) ->
@@ -68,6 +71,9 @@ update msg model =
 view : Model -> Html Msg
 view model =
     let
+        wrapDiv el =
+            div [ padContent ] [ el ]
+
         disableButton =
             case model.submitStatus of
                 Just Loading ->
@@ -82,25 +88,28 @@ view model =
     Html.form [ onSubmit Submit, Elevation.z12, padContent ]
         [ div [ padContent ] [ h1 [] [ text "Login" ] ]
         , viewError model.submitStatus
-        , div [ padContent ]
-            [ TextField.filled
-                (TextField.config
-                    |> TextField.setLabel (Just "Name")
-                    |> TextField.setOnInput OnInputName
-                    |> TextField.setPlaceholder (Just "John")
-                )
-            , TextField.filled
-                (TextField.config
-                    |> TextField.setLabel (Just "Password")
-                    |> TextField.setType (Just "password")
-                    |> TextField.setOnInput OnInputPassword
-                )
-            , TextField.filled
-                (TextField.config
-                    |> TextField.setLabel (Just "Password Confirm")
-                    |> TextField.setType (Just "password")
-                    |> TextField.setOnInput OnInputPasswordConfirm
-                )
+        , div []
+            [ wrapDiv <|
+                TextField.filled
+                    (TextField.config
+                        |> TextField.setLabel (Just "Name")
+                        |> TextField.setOnInput OnInputName
+                        |> TextField.setPlaceholder (Just "John")
+                    )
+            , wrapDiv <|
+                TextField.filled
+                    (TextField.config
+                        |> TextField.setLabel (Just "Password")
+                        |> TextField.setType (Just "password")
+                        |> TextField.setOnInput OnInputPassword
+                    )
+            , wrapDiv <|
+                TextField.filled
+                    (TextField.config
+                        |> TextField.setLabel (Just "Password Confirm")
+                        |> TextField.setType (Just "password")
+                        |> TextField.setOnInput OnInputPasswordConfirm
+                    )
             ]
         , div [ padContent, style "text-align" "right" ]
             [ Button.raised
