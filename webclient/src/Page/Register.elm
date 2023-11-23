@@ -85,39 +85,48 @@ view model =
                 _ ->
                     False
     in
-    Html.form [ onSubmit Submit, Elevation.z12, padContent ]
-        [ div [ padContent ] [ h1 [] [ text "Login" ] ]
-        , viewError model.submitStatus
-        , div []
-            [ wrapDiv <|
-                TextField.filled
-                    (TextField.config
-                        |> TextField.setLabel (Just "Name")
-                        |> TextField.setOnInput OnInputName
-                        |> TextField.setPlaceholder (Just "John")
+    Html.form
+        [ onSubmit Submit
+        , style "display" "flex"
+        , style "justify-content" "center"
+        , style "align-items" "center"
+        , style "width" "100%"
+        , style "height" "100%"
+        ]
+        [ div [ Elevation.z12, padContent ]
+            [ div [ padContent ] [ h1 [] [ text "Register" ] ]
+            , viewError model.submitStatus
+            , div []
+                [ wrapDiv <|
+                    TextField.filled
+                        (TextField.config
+                            |> TextField.setLabel (Just "Username")
+                            |> TextField.setOnInput OnInputName
+                            |> TextField.setPlaceholder (Just "John")
+                        )
+                , wrapDiv <|
+                    TextField.filled
+                        (TextField.config
+                            |> TextField.setLabel (Just "Password")
+                            |> TextField.setType (Just "password")
+                            |> TextField.setOnInput OnInputPassword
+                        )
+                , wrapDiv <|
+                    TextField.filled
+                        (TextField.config
+                            |> TextField.setLabel (Just "Confirm Password")
+                            |> TextField.setType (Just "password")
+                            |> TextField.setOnInput OnInputPasswordConfirm
+                        )
+                ]
+            , div [ padContent, style "text-align" "right" ]
+                [ Button.raised
+                    (Button.config
+                        |> Button.setAttributes [ type_ "submit" ]
+                        |> Button.setDisabled disableButton
                     )
-            , wrapDiv <|
-                TextField.filled
-                    (TextField.config
-                        |> TextField.setLabel (Just "Password")
-                        |> TextField.setType (Just "password")
-                        |> TextField.setOnInput OnInputPassword
-                    )
-            , wrapDiv <|
-                TextField.filled
-                    (TextField.config
-                        |> TextField.setLabel (Just "Password Confirm")
-                        |> TextField.setType (Just "password")
-                        |> TextField.setOnInput OnInputPasswordConfirm
-                    )
-            ]
-        , div [ padContent, style "text-align" "right" ]
-            [ Button.raised
-                (Button.config
-                    |> Button.setAttributes [ type_ "submit" ]
-                    |> Button.setDisabled disableButton
-                )
-                "Submit"
+                    "Submit"
+                ]
             ]
         ]
 

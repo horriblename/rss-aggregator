@@ -291,7 +291,15 @@ view model =
             , Drawer.scrim
             , Html.div [ style "width" "100%" ]
                 [ Lazy.lazy viewTopBar model.drawer.open
-                , Html.div [ TopAppBar.fixedAdjust ] [ currentView model ]
+                , Html.div
+                    [ TopAppBar.fixedAdjust
+
+                    -- HACK: I want the main content to cover 100% height, but I don't want
+                    -- the scrollbar to show up due to vertical offset by the top app bar
+                    -- so I settled for this instead
+                    , style "height" "90vh"
+                    ]
+                    [ currentView model ]
                 ]
             ]
         ]
