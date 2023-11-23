@@ -1,8 +1,9 @@
-module Common exposing (ApiRequestError(..), Resource(..), errorBox, expectApiJson, padContent)
+module Common exposing (ApiRequestError(..), Resource(..), errorBox, expectApiJson, padContent, refreshAccessToken)
 
+import ApiUrl exposing (apiBaseUrl)
 import Html exposing (Html)
 import Html.Attributes exposing (style)
-import Http
+import Http exposing (header)
 import Json.Decode as Decode exposing (Decoder, string)
 import Json.Decode.Pipeline exposing (required)
 
@@ -73,3 +74,27 @@ expectApiJson toMsg decoder =
 
                         Err err ->
                             Err <| Unhandled <| Http.BadBody (Decode.errorToString err)
+
+
+type alias AccessToken =
+    { token : String }
+
+
+refreshedAccessTokenDecoder : Decoder String
+refreshedAccessTokenDecoder =
+    Decode.succeed AccessToken
+        |> required "token" string
+        |> Decode.map (\tok -> tok.token)
+
+
+refreshAccessToken : String -> (Result ApiRequestError String -> msg) -> Cmd msg
+refreshAccessToken refreshToken toMsg =
+    Http.request
+        { method = "POST"
+        , headers = [ header "Authorization" <| "Bearer " ++ refreshToken ]
+        , url = apiBaseUrl ++ "/v1/refresh"
+        , body = Http.emptyBody
+        , expect = expectApiJson toMsg refreshedAccessTokenDecoder
+        , timeout = Nothing
+        , tracker = Nothing
+        }
