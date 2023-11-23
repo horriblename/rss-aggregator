@@ -89,7 +89,17 @@ func main() {
 
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
-		log.Fatal("missing env var $JWT_SECRET")
+		jwtFile := os.Getenv("JWT_SECRET_FILE")
+		if jwtFile == "" {
+			log.Fatal("missing env var $JWT_SECRET")
+		}
+
+		secret, err := os.ReadFile(jwtFile)
+		if err != nil {
+			log.Fatalf("error reading $JWT_SECRET_FILE (%s): %s", jwtFile, err)
+		}
+
+		jwtSecret = string(secret)
 	}
 	apiCfg := apiConfig{database.New(db), db, []byte(jwtSecret), context.Background()}
 
