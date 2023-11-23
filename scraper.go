@@ -13,8 +13,15 @@ import (
 func fetchFeedLoop(cfg apiConfig) {
 	ticker := time.NewTicker(gFetchFeedInterval)
 	for {
+		select {
+		// FIXME: This blocks the fetch feed loop every time a new feed is created,
+		// this should be run on a separate loop or dedicated thread pool
+		case feed := <-cfg.newFeed:
+			cfg.scrapeFeed(feed.Url, feed.ID, nil)
+		case <-ticker.C:
+		}
+
 		fetchFeeds(cfg)
-		<-ticker.C
 	}
 }
 
