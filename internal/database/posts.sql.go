@@ -28,6 +28,12 @@ INSERT INTO posts (
     source_url,
     source_name
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+ON CONFLICT DO UPDATE SET
+	id = EXCLUDED.id,
+	updated_at = EXCLUDED.updated_at,
+	title = EXCLUDED.title,
+	url = EXCLUDED.url,
+	description = EXCLUDED.description
 RETURNING id, created_at, updated_at, title, url, description, published_at, feed_id, guid, media_id, source_url, source_name
 `
 
