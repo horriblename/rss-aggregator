@@ -1,4 +1,4 @@
-module User exposing (User, registerUser)
+module User exposing (User, loginUser, registerUser)
 
 import ApiUrl exposing (apiBaseUrl)
 import Http exposing (jsonBody)
@@ -24,10 +24,6 @@ userDecoder =
         |> required "apikey" string
 
 
-
--- registerUserDataEncoder : Encoder RegisterUserData
-
-
 type alias RegisterData =
     { name : String, password : String }
 
@@ -46,4 +42,28 @@ registerUser regData toMsg =
         { url = apiBaseUrl ++ "/v1/users"
         , body = jsonBody (encodeRegisterData regData)
         , expect = Http.expectJson toMsg userDecoder
+        }
+
+
+type alias UserTokens =
+    { id : String
+    , accessToken : String
+    , refreshToken : String
+    }
+
+
+userTokensDecoder : Decoder UserTokens
+userTokensDecoder =
+    Decode.succeed UserTokens
+        |> required "id" string
+        |> required "access_token" string
+        |> required "refresh_token" string
+
+
+loginUser : RegisterData -> (Result Http.Error UserTokens -> msg) -> Cmd msg
+loginUser loginData toMsg =
+    Http.post
+        { url = apiBaseUrl ++ "/v1/login"
+        , body = jsonBody (encodeRegisterData loginData)
+        , expect = Http.expectJson toMsg userTokensDecoder
         }
