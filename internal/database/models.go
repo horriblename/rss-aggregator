@@ -51,6 +51,11 @@ type Post struct {
 	SourceName  sql.NullString `json:"source_name"`
 }
 
+type Revokedtoken struct {
+	Token     string    `json:"token"`
+	Expiresat time.Time `json:"expiresat"`
+}
+
 type User struct {
 	ID           uuid.UUID `json:"id"`
 	CreatedAt    time.Time `json:"created_at"`
