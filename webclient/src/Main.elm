@@ -12,6 +12,7 @@ import Material.Icon as Icon
 import Material.IconButton as IconButton
 import Material.TopAppBar as TopAppBar
 import Material.Typography exposing (typography)
+import Page.Login as LoginPage exposing (OutMsg(..))
 import Page.NewFeed as NewFeedPage exposing (OutMsg(..))
 import Page.Register as RegisterPage exposing (OutMsg(..))
 import Page.ViewFeeds as FeedsPage
@@ -56,6 +57,7 @@ type alias Model =
 type Page
     = NotFoundPage
     | RegisterPage RegisterPage.Model
+    | LoginPage LoginPage.Model
     | FeedsPage FeedsPage.Model
     | PostsPage PostsPage.Model
     | NewFeedPage NewFeedPage.Model
@@ -100,6 +102,13 @@ initCurrentPage ( model, exisitngCmds ) =
                             RegisterPage.init ()
                     in
                     ( RegisterPage pageModel, Cmd.map RegisterPageMsg pageCmds )
+
+                Route.Login ->
+                    let
+                        ( pageModel, pageCmds ) =
+                            LoginPage.init ()
+                    in
+                    ( LoginPage pageModel, Cmd.map LoginPageMsg pageCmds )
 
                 Route.Feeds ->
                     initAuthedPage FeedsPage.init model FeedsPage FeedsPageMsg
@@ -149,6 +158,7 @@ port storeRefreshToken : String -> Cmd msg
 
 type Msg
     = RegisterPageMsg RegisterPage.Msg
+    | LoginPageMsg LoginPage.Msg
     | FeedsPageMsg FeedsPage.Msg
     | PostsPageMsg PostsPage.Msg
     | NewFeedPageMsg NewFeedPage.Msg
@@ -194,6 +204,19 @@ update msg model =
             in
             ( updatedSignalModel, Cmd.batch [ Cmd.map RegisterPageMsg updatedCmd, moreCmd ] )
 
+        ( LoginPageMsg subMsg, LoginPage subModel ) ->
+            let
+                ( updatedPageModel, updatedCmd, outMsg ) =
+                    LoginPage.update subMsg subModel
+
+                updatedModel =
+                    { model | page = LoginPage updatedPageModel }
+
+                ( updatedSignalModel, moreCmd ) =
+                    processSignal updatedModel (LoginPageSignal outMsg)
+            in
+            ( updatedSignalModel, Cmd.batch [ Cmd.map LoginPageMsg updatedCmd, moreCmd ] )
+
         ( FeedsPageMsg subMsg, FeedsPage subModel ) ->
             let
                 ( updatedPageModel, updatedCmd ) =
@@ -227,6 +250,7 @@ update msg model =
 
 type SignalFromChild
     = RegisterPageSignal (Maybe RegisterPage.OutMsg)
+    | LoginPageSignal (Maybe LoginPage.OutMsg)
     | NewFeedPageSignal (Maybe NewFeedPage.OutMsg)
 
 
@@ -235,6 +259,15 @@ processSignal model signal =
     case signal of
         RegisterPageSignal (Just RegisterSuccess) ->
             ( model, Cmd.batch [ Nav.pushUrl model.navKey "/login" ] )
+
+        LoginPageSignal (Just (LoggedIn { accessToken, refreshToken })) ->
+            ( { model | accessToken = Just accessToken, refreshToken = Just refreshToken }
+            , Cmd.batch
+                [ Nav.pushUrl model.navKey "/"
+                , storeAccessToken accessToken
+                , storeRefreshToken refreshToken
+                ]
+            )
 
         -- ( { model | accessToken = Just accessToken }, Cmd.batch [ storeAccessToken accessToken, Nav.pushUrl model.navKey "/" ] )
         NewFeedPageSignal (Just (CreatedFeed _)) ->
@@ -310,6 +343,10 @@ currentView model =
         RegisterPage pageModel ->
             Lazy.lazy RegisterPage.view pageModel
                 |> Html.map RegisterPageMsg
+
+        LoginPage pageModel ->
+            Lazy.lazy LoginPage.view pageModel
+                |> Html.map LoginPageMsg
 
         FeedsPage pageModel ->
             Lazy.lazy FeedsPage.view pageModel

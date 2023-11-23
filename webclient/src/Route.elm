@@ -8,6 +8,7 @@ type Route
     = NotFound
     | Posts
     | Register
+    | Login
     | Feeds
     | NewFeed
 
@@ -33,6 +34,7 @@ matchRoute =
         [ map Posts top
         , map Posts (s "posts")
         , map Register (s "register")
+        , map Login (s "login")
         , map Feeds (s "feeds")
         , map NewFeed (s "feeds" </> s "new")
         ]
