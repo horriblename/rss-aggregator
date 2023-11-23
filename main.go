@@ -28,12 +28,17 @@ import (
 )
 
 const (
-	gGetPostDefaultLimit           = 20
-	gFetchFeedInterval             = 60 * time.Second
-	gAccessTokIssuer               = "rss-aggre.horriblename.site"
-	gRefreshTokIssuer              = "rss-aggre.horriblename.site"
-	gRefreshTokenExpirationSeconds = 1 * 60 * 60
-	gAccessTokenExpirationSeconds  = 60 * 24 * 60 * 60
+	gGetPostDefaultLimit    = 20
+	gFetchFeedInterval      = 60 * time.Second
+	gAccessTokIssuer        = "rss-aggre.horriblename.site"
+	gRefreshTokIssuer       = "rss-aggre.horriblename.site"
+	gRefreshTokenExpiration = 1 * 60 * 60 * time.Second
+	gAccessTokenExpiration  = 60 * 24 * 60 * 60 * time.Second
+)
+
+var (
+	ErrBadAuthHeader     = errors.New("bad Authorization header")
+	ErrUnauthorizedToken = errors.New("Unauthorized Token")
 )
 
 type serverConfig struct {
@@ -342,7 +347,7 @@ func (cfg *apiConfig) postLogin(w http.ResponseWriter, r *http.Request) {
 	accessTokClaims := jwt.RegisteredClaims{
 		Issuer:    gAccessTokIssuer,
 		Subject:   user.ID.String(),
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(gAccessTokenExpirationSeconds) * time.Second)),
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(gAccessTokenExpiration)),
 		IssuedAt:  jwt.NewNumericDate(time.Now()),
 	}
 
@@ -350,7 +355,7 @@ func (cfg *apiConfig) postLogin(w http.ResponseWriter, r *http.Request) {
 		Issuer:    gRefreshTokIssuer,
 		Subject:   user.ID.String(),
 		IssuedAt:  jwt.NewNumericDate(time.Now()),
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(gRefreshTokenExpirationSeconds) * time.Second)),
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(gRefreshTokenExpiration)),
 	}
 
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessTokClaims)
