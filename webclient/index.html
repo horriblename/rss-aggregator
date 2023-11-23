@@ -25,15 +25,19 @@
     <main></main>
     <script src="./Main.js"></script>
     <script>
-      var apiKey = localStorage.getItem("api-key");
-      console.log(apiKey ? "Retrieved api key" : "No api key in localStorage");
+      var accessToken = localStorage.getItem("access-token");
+      var refreshToken = localStorage.getItem("refresh-token");
       var app = Elm.Main.init({
         node: document.querySelector("main"),
-        flags: { apiKey: apiKey },
+        flags: { accessToken: accessToken, refreshToken: refreshToken },
       });
-      app.ports.storeApiKey.subscribe(function (apiKey) {
-        localStorage.setItem("api-key", apiKey);
-        console.log("saved api-key");
+      app.ports.storeAccessToken.subscribe(function (accessToken) {
+        localStorage.setItem("access-token", accessToken);
+        console.log("saved access-token");
+      });
+      app.ports.storeRefreshToken.subscribe(function (refreshToken) {
+        localStorage.setItem("refresh-token", refreshToken);
+        console.log("saved refresh-token");
       });
     </script>
   </body>
