@@ -1,0 +1,11 @@
+--- index.html	2023-11-24 17:55:02.756021762 +0100
++++ index.html.1	2023-11-24 18:16:58.383161773 +0100
+@@ -23,7 +23,7 @@
+ 
+   <body>
+     <main></main>
+-    <script src="./Main.js"></script>
++    <script src="./Main.js.gz"></script>
+     <script>
+       var accessToken = localStorage.getItem("access-token");
+       var refreshToken = localStorage.getItem("refresh-token");

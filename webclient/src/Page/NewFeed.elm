@@ -5,9 +5,9 @@ import Feed exposing (Feed, createFeed)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+import Html.Lazy exposing (lazy)
 import Http
 import Material.Button as Button
-import Material.Elevation as Elevation
 import Material.TextField as TextField
 
 
@@ -77,6 +77,11 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
+    lazy viewForm model.createResult
+
+
+viewForm : Maybe (Resource String ()) -> Html Msg
+viewForm status =
     let
         textField label placeholder toMsg =
             div [ padContent ]
@@ -90,7 +95,7 @@ view model =
                 ]
 
         errMsg =
-            case model.createResult of
+            case status of
                 Just (Failed err) ->
                     errorBox (Just err)
 
@@ -98,7 +103,7 @@ view model =
                     text ""
 
         disableButton =
-            case model.createResult of
+            case status of
                 Just Loading ->
                     True
 
