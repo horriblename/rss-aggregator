@@ -96,28 +96,31 @@ view model =
         [ div [ Elevation.z12, padContent ]
             [ div [ padContent ] [ h1 [] [ text "Register" ] ]
             , viewError model.submitStatus
-            , div []
-                [ wrapDiv <|
-                    TextField.filled
-                        (TextField.config
-                            |> TextField.setLabel (Just "Username")
-                            |> TextField.setOnInput OnInputName
-                            |> TextField.setPlaceholder (Just "John")
-                        )
-                , wrapDiv <|
-                    TextField.filled
-                        (TextField.config
-                            |> TextField.setLabel (Just "Password")
-                            |> TextField.setType (Just "password")
-                            |> TextField.setOnInput OnInputPassword
-                        )
-                , wrapDiv <|
-                    TextField.filled
-                        (TextField.config
-                            |> TextField.setLabel (Just "Confirm Password")
-                            |> TextField.setType (Just "password")
-                            |> TextField.setOnInput OnInputPasswordConfirm
-                        )
+            , -- XXX: Avoid building the same virtual DOM as Login page, see https://github.com/horriblename/rss-aggregator/issues/20
+              div []
+                [ div []
+                    [ wrapDiv <|
+                        TextField.filled
+                            (TextField.config
+                                |> TextField.setLabel (Just "Username")
+                                |> TextField.setOnInput OnInputName
+                                |> TextField.setPlaceholder (Just "John")
+                            )
+                    , wrapDiv <|
+                        TextField.filled
+                            (TextField.config
+                                |> TextField.setLabel (Just "Password")
+                                |> TextField.setType (Just "password")
+                                |> TextField.setOnInput OnInputPassword
+                            )
+                    , wrapDiv <|
+                        TextField.filled
+                            (TextField.config
+                                |> TextField.setLabel (Just "Confirm Password")
+                                |> TextField.setType (Just "password")
+                                |> TextField.setOnInput OnInputPasswordConfirm
+                            )
+                    ]
                 ]
             , div [ padContent, style "text-align" "right" ]
                 [ Button.raised
