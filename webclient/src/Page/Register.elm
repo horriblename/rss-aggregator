@@ -4,6 +4,7 @@ import Common exposing (Resource(..), errorBox, padContent)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+import Html.Lazy exposing (lazy)
 import Http
 import Material.Button as Button
 import Material.Elevation as Elevation
@@ -70,12 +71,17 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
+    lazy viewForm model.submitStatus
+
+
+viewForm : Maybe (Resource String ()) -> Html Msg
+viewForm status =
     let
         wrapDiv el =
             div [ padContent ] [ el ]
 
         disableButton =
-            case model.submitStatus of
+            case status of
                 Just Loading ->
                     True
 
@@ -95,7 +101,7 @@ view model =
         ]
         [ div [ Elevation.z12, padContent ]
             [ div [ padContent ] [ h1 [] [ text "Register" ] ]
-            , viewError model.submitStatus
+            , viewError status
             , -- XXX: Avoid building the same virtual DOM as Login page, see https://github.com/horriblename/rss-aggregator/issues/20
               div []
                 [ div []
